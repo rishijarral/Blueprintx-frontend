@@ -48,7 +48,7 @@ export interface PaginationInfo {
 /**
  * Base type for query params that can be passed to API
  */
-export type QueryParams = Record<string, string | number | boolean | undefined>;
+export type QueryParams = Record<string, string | number | boolean | string[] | undefined>;
 
 /**
  * Query parameters for paginated requests

@@ -112,7 +112,7 @@ export async function markAllRead(): Promise<{
 export async function markBatchRead(
   notificationIds: string[]
 ): Promise<{ success: boolean; marked_count: number }> {
-  return apiPost<MarkReadRequest, { success: boolean; marked_count: number }>(
+  return apiPost<{ success: boolean; marked_count: number }>(
     "/notifications/mark-read",
     { notification_ids: notificationIds }
   );

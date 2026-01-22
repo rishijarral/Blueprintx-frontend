@@ -67,19 +67,11 @@ export default function VerificationDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "verifications"] });
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats });
-      showToast({
-        title: "Verification Approved",
-        description: "The subcontractor has been successfully verified.",
-        type: "success",
-      });
+      showToast.success("Verification Approved", "The subcontractor has been successfully verified.");
       router.push("/admin/verifications");
     },
     onError: (error: Error) => {
-      showToast({
-        title: "Approval Failed",
-        description: error.message || "Failed to approve verification.",
-        type: "error",
-      });
+      showToast.error("Approval Failed", error.message || "Failed to approve verification.");
     },
   });
 
@@ -90,19 +82,11 @@ export default function VerificationDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "verifications"] });
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats });
-      showToast({
-        title: "Verification Rejected",
-        description: "The verification request has been rejected.",
-        type: "success",
-      });
+      showToast.success("Verification Rejected", "The verification request has been rejected.");
       router.push("/admin/verifications");
     },
     onError: (error: Error) => {
-      showToast({
-        title: "Rejection Failed",
-        description: error.message || "Failed to reject verification.",
-        type: "error",
-      });
+      showToast.error("Rejection Failed", error.message || "Failed to reject verification.");
     },
   });
 

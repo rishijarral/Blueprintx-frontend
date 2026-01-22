@@ -102,7 +102,7 @@ export default function MarketplacePage() {
         }
       />
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} defaultValue="tenders" onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="tenders">
             <FileText className="h-4 w-4 mr-2" />

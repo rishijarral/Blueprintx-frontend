@@ -10,6 +10,11 @@ const REQUEST_TIMEOUT = 30000;
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
 
+// Token cache to avoid repeated Supabase calls
+let cachedToken: string | null = null;
+let tokenExpiresAt: number = 0;
+let tokenPromise: Promise<string | null> | null = null;
+
 /**
  * Custom error class for API errors
  */
@@ -30,14 +35,62 @@ export class ApiError extends Error {
 }
 
 /**
- * Get the current access token from Supabase
+ * Get the current access token from Supabase with caching
+ * Uses in-memory cache to avoid repeated getSession() calls
  */
 async function getAccessToken(): Promise<string | null> {
-  const supabase = getClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  return session?.access_token ?? null;
+  const now = Date.now();
+  
+  // Return cached token if still valid (with 30s buffer before expiry)
+  if (cachedToken && tokenExpiresAt > now + 30000) {
+    return cachedToken;
+  }
+  
+  // If there's already a token fetch in progress, wait for it
+  if (tokenPromise) {
+    return tokenPromise;
+  }
+  
+  // Fetch new token
+  tokenPromise = (async () => {
+    try {
+      const supabase = getClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      
+      if (session?.access_token) {
+        cachedToken = session.access_token;
+        // Cache until token expires (exp is in seconds, convert to ms)
+        // Parse JWT to get expiry without external deps
+        try {
+          const payload = JSON.parse(atob(session.access_token.split('.')[1]));
+          tokenExpiresAt = payload.exp * 1000;
+        } catch {
+          // If parsing fails, cache for 5 minutes
+          tokenExpiresAt = now + 5 * 60 * 1000;
+        }
+        return cachedToken;
+      }
+      
+      cachedToken = null;
+      tokenExpiresAt = 0;
+      return null;
+    } finally {
+      tokenPromise = null;
+    }
+  })();
+  
+  return tokenPromise;
+}
+
+/**
+ * Clear the token cache (call on logout)
+ */
+export function clearTokenCache(): void {
+  cachedToken = null;
+  tokenExpiresAt = 0;
+  tokenPromise = null;
 }
 
 /**
@@ -72,6 +125,8 @@ async function apiRequest<T>(
 
   const headers: HeadersInit = {
     "Content-Type": "application/json",
+    // Allow the browser to cache GET requests and use conditional requests
+    "Accept": "application/json",
     ...options.headers,
   };
 
@@ -86,7 +141,10 @@ async function apiRequest<T>(
       ...options,
       headers,
       signal: controller.signal,
-      credentials: "same-origin",
+      // Use include for cross-origin requests in dev (localhost:3000 -> localhost:8080)
+      credentials: "include",
+      // Enable keepalive for faster subsequent requests
+      keepalive: true,
     });
 
     clearTimeout(timeoutId);
@@ -217,7 +275,7 @@ export async function apiGet<T>(
  */
 export async function apiGetPaginated<T>(
   endpoint: string,
-  params?: Record<string, string | number | boolean | undefined>,
+  params?: Record<string, string | number | boolean | string[] | undefined>,
 ): Promise<PaginatedResponse<T>> {
   let url = endpoint;
 
@@ -225,7 +283,11 @@ export async function apiGetPaginated<T>(
     const searchParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined) {
-        searchParams.append(key, String(value));
+        if (Array.isArray(value)) {
+          value.forEach((v) => searchParams.append(key, v));
+        } else {
+          searchParams.append(key, String(value));
+        }
       }
     });
     const queryString = searchParams.toString();

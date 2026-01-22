@@ -106,7 +106,7 @@ function getActionLabel(action: AdminAction): string {
   return labels[action] || action;
 }
 
-function getActionBadgeVariant(action: AdminAction): "success" | "destructive" | "warning" | "secondary" {
+function getActionBadgeVariant(action: AdminAction): "success" | "error" | "warning" | "secondary" {
   switch (action) {
     case "verify_subcontractor":
     case "unsuspend_user":
@@ -114,7 +114,7 @@ function getActionBadgeVariant(action: AdminAction): "success" | "destructive" |
     case "reject_subcontractor":
     case "suspend_user":
     case "delete_content":
-      return "destructive";
+      return "error";
     case "revoke_admin":
       return "warning";
     default:
@@ -278,7 +278,7 @@ export default function AuditLogPage() {
       {isLoading ? (
         <Card variant="bordered">
           <CardContent className="p-0">
-            <SkeletonTable rows={10} columns={5} />
+            <SkeletonTable rows={10} cols={5} />
           </CardContent>
         </Card>
       ) : logs.length === 0 ? (

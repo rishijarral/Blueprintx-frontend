@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -9,6 +9,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  CardDescription,
   Button,
   Badge,
   Input,
@@ -17,8 +18,9 @@ import {
   Avatar,
   Modal,
 } from "@/components/ui";
-import { SkeletonCard } from "@/components/ui/Skeleton";
+import { SkeletonCard, SkeletonAvatar } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/common";
+import { useShowToast } from "@/components/ui/Toast";
 import {
   marketplaceApi,
   type UpdateMarketplaceProfileInput,
@@ -47,6 +49,8 @@ import {
   AlertCircle,
   Save,
   Image,
+  Settings,
+  ExternalLink,
 } from "lucide-react";
 
 const TRADE_OPTIONS = [
@@ -74,6 +78,7 @@ const AVAILABILITY_OPTIONS = [
 
 export default function MarketplaceProfilePage() {
   const queryClient = useQueryClient();
+  const toast = useShowToast();
   const [isEditing, setIsEditing] = useState(false);
   const [showPortfolioModal, setShowPortfolioModal] = useState(false);
   const [editingPortfolio, setEditingPortfolio] = useState<PortfolioProject | null>(null);
@@ -91,16 +96,54 @@ export default function MarketplaceProfilePage() {
 
   const requestVerificationMutation = useMutation({
     mutationFn: () => marketplaceApi.profile.requestVerification(),
-    onSuccess: () => {
+    onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.marketplace.profile });
+      toast.success(
+        "Verification requested",
+        response.message || "Your profile is now pending verification."
+      );
+    },
+    onError: (error: Error) => {
+      toast.error("Failed to request verification", error.message);
     },
   });
 
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <SkeletonCard />
-        <SkeletonCard />
+        <PageHeader
+          title="Marketplace Profile"
+          description="Manage how you appear to potential clients"
+          breadcrumbs={[
+            { label: "Dashboard", href: ROUTES.DASHBOARD },
+            { label: "Marketplace", href: "/marketplace" },
+            { label: "My Profile" },
+          ]}
+        />
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2 space-y-6">
+            <Card variant="bordered">
+              <CardContent className="p-6">
+                <div className="flex flex-col sm:flex-row items-start gap-6">
+                  <SkeletonAvatar size="xl" />
+                  <div className="flex-1 space-y-3">
+                    <div className="h-8 w-48 rounded bg-muted animate-pulse" />
+                    <div className="h-4 w-64 rounded bg-muted animate-pulse" />
+                    <div className="flex gap-2">
+                      <div className="h-6 w-20 rounded bg-muted animate-pulse" />
+                      <div className="h-6 w-24 rounded bg-muted animate-pulse" />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <SkeletonCard />
+          </div>
+          <div className="space-y-6">
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+        </div>
       </div>
     );
   }
@@ -150,6 +193,11 @@ export default function MarketplaceProfilePage() {
         ]}
         actions={
           <div className="flex gap-2">
+            <Link href={ROUTES.PROFILE}>
+              <Button variant="outline" size="sm" leftIcon={<User className="h-4 w-4" />}>
+                <span className="hidden sm:inline">Main Profile</span>
+              </Button>
+            </Link>
             {!isVerified && !isPending && (
               <Button
                 variant="outline"
@@ -524,11 +572,16 @@ function PortfolioCard({
   onEdit: () => void;
 }) {
   const queryClient = useQueryClient();
+  const toast = useShowToast();
 
   const deleteMutation = useMutation({
     mutationFn: () => marketplaceApi.portfolio.delete(project.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.marketplace.portfolio });
+      toast.success("Project deleted", "Portfolio project has been removed.");
+    },
+    onError: (error: Error) => {
+      toast.error("Failed to delete project", error.message);
     },
   });
 
@@ -600,6 +653,7 @@ function EditProfileModal({
   profile: any;
 }) {
   const queryClient = useQueryClient();
+  const toast = useShowToast();
   const [formData, setFormData] = useState<UpdateMarketplaceProfileInput>({
     name: profile?.name || "",
     headline: profile?.headline || "",
@@ -614,12 +668,35 @@ function EditProfileModal({
     availability_status: profile?.availability_status || "available",
   });
 
+  // Reset form data when profile changes
+  useEffect(() => {
+    if (profile) {
+      setFormData({
+        name: profile.name || "",
+        headline: profile.headline || "",
+        company_description: profile.company_description || "",
+        trade: profile.trade || "",
+        location: profile.location || "",
+        contact_email: profile.contact_email || "",
+        contact_phone: profile.contact_phone || "",
+        website: profile.website || "",
+        year_established: profile.year_established,
+        employee_count: profile.employee_count || "",
+        availability_status: profile.availability_status || "available",
+      });
+    }
+  }, [profile]);
+
   const updateMutation = useMutation({
     mutationFn: (input: UpdateMarketplaceProfileInput) =>
       marketplaceApi.profile.update(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.marketplace.profile });
+      toast.success("Profile updated", "Your marketplace profile has been saved.");
       onClose();
+    },
+    onError: (error: Error) => {
+      toast.error("Failed to update profile", error.message);
     },
   });
 
@@ -758,6 +835,7 @@ function PortfolioModal({
   project: PortfolioProject | null;
 }) {
   const queryClient = useQueryClient();
+  const toast = useShowToast();
   const isEdit = !!project;
 
   const [formData, setFormData] = useState<PortfolioProjectInput>({
@@ -773,12 +851,32 @@ function PortfolioModal({
     is_featured: project?.is_featured || false,
   });
 
+  // Reset form when project changes
+  useEffect(() => {
+    setFormData({
+      title: project?.title || "",
+      description: project?.description || "",
+      project_type: project?.project_type || "",
+      trade_category: project?.trade_category || "",
+      location: project?.location || "",
+      completion_date: project?.completion_date || "",
+      project_value: project?.project_value,
+      client_name: project?.client_name || "",
+      client_testimonial: project?.client_testimonial || "",
+      is_featured: project?.is_featured || false,
+    });
+  }, [project]);
+
   const createMutation = useMutation({
     mutationFn: (input: PortfolioProjectInput) =>
       marketplaceApi.portfolio.create(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.marketplace.portfolio });
+      toast.success("Project added", "Portfolio project has been created.");
       onClose();
+    },
+    onError: (error: Error) => {
+      toast.error("Failed to add project", error.message);
     },
   });
 
@@ -787,7 +885,11 @@ function PortfolioModal({
       marketplaceApi.portfolio.update(project!.id, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.marketplace.portfolio });
+      toast.success("Project updated", "Portfolio project has been saved.");
       onClose();
+    },
+    onError: (error: Error) => {
+      toast.error("Failed to update project", error.message);
     },
   });
 

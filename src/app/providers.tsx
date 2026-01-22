@@ -2,21 +2,16 @@
 
 import { useState, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { ToastProvider } from "@/components/ui";
 import { ErrorBoundary } from "@/components/common";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 interface ProvidersProps {
   children: ReactNode;
 }
 
 /**
- * Optimized React Query configuration for scalability
- * 
- * - Increased staleTime reduces unnecessary refetches
- * - Longer gcTime keeps data in cache for faster navigation
- * - refetchOnWindowFocus: 'always' only for fresh data on tab switch
- * - refetchOnReconnect helps mobile/unstable connections
+ * Optimized React Query configuration for performance
  */
 export function Providers({ children }: ProvidersProps) {
   const [queryClient] = useState(
@@ -24,26 +19,23 @@ export function Providers({ children }: ProvidersProps) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            // Data considered fresh for 2 minutes - reduces API calls
-            staleTime: 2 * 60 * 1000,
-            // Keep unused data in cache for 10 minutes - faster back navigation
-            gcTime: 10 * 60 * 1000,
-            // Retry failed requests with exponential backoff
-            retry: 3,
-            retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-            // Refetch stale data on window focus (not all data)
-            refetchOnWindowFocus: true,
-            // Refetch when coming back online
-            refetchOnReconnect: true,
-            // Don't refetch on mount if data is still fresh
-            refetchOnMount: true,
-            // Use placeholder data while fetching (reduces layout shift)
-            placeholderData: (previousData: unknown) => previousData,
-          },
-          mutations: {
-            // Retry mutations once on failure (with delay)
+            // Data considered fresh for 5 minutes - reduces API calls significantly
+            staleTime: 5 * 60 * 1000,
+            // Keep unused data in cache for 30 minutes - faster back navigation
+            gcTime: 30 * 60 * 1000,
+            // Only retry once to fail fast
             retry: 1,
             retryDelay: 1000,
+            // Don't refetch on window focus by default (too aggressive)
+            refetchOnWindowFocus: false,
+            // Refetch when coming back online
+            refetchOnReconnect: true,
+            // Don't refetch on mount if data exists
+            refetchOnMount: false,
+          },
+          mutations: {
+            // Don't retry mutations - let user retry manually
+            retry: 0,
           },
         },
       })
@@ -51,12 +43,11 @@ export function Providers({ children }: ProvidersProps) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ErrorBoundary>
-        <ToastProvider>{children}</ToastProvider>
-      </ErrorBoundary>
-      {process.env.NODE_ENV === "development" && (
-        <ReactQueryDevtools initialIsOpen={false} />
-      )}
+      <AuthProvider>
+        <ErrorBoundary>
+          <ToastProvider>{children}</ToastProvider>
+        </ErrorBoundary>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

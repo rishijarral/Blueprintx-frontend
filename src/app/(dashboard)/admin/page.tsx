@@ -136,7 +136,7 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
               <Link href="/admin/verifications">
-                <Button variant="warning" size="sm" rightIcon={<ArrowRight className="h-4 w-4" />}>
+                <Button variant="secondary" size="sm" rightIcon={<ArrowRight className="h-4 w-4" />}>
                   Review Now
                 </Button>
               </Link>

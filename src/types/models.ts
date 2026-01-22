@@ -31,14 +31,65 @@ export interface Profile {
   title: string | null;
   bio: string | null;
   location: string | null;
+  avatar_url: string | null;
   is_admin: boolean;
+  created_at: string;
   updated_at: string;
 }
 
 export interface UserSettings {
   user_id: string;
   notification_settings: NotificationSettings;
+  theme_preference: ThemePreference;
   updated_at: string;
+}
+
+/**
+ * Theme preference for the user - stored in settings
+ */
+export type ThemePreference = "light" | "dark" | "system";
+
+/**
+ * Request to change user email
+ */
+export interface ChangeEmailRequest {
+  new_email: string;
+  password: string; // Required for security verification
+}
+
+/**
+ * Response from email change request
+ */
+export interface ChangeEmailResponse {
+  success: boolean;
+  message: string;
+  verification_sent: boolean;
+}
+
+/**
+ * Request to delete account
+ */
+export interface DeleteAccountRequest {
+  confirm_email: string; // Must match current email for verification
+  password: string; // Required for security
+  reason?: string; // Optional feedback
+}
+
+/**
+ * Response from account deletion request
+ */
+export interface DeleteAccountResponse {
+  success: boolean;
+  message: string;
+  scheduled_deletion_date?: string; // If soft delete with grace period
+}
+
+/**
+ * Avatar upload response
+ */
+export interface AvatarUploadResponse {
+  avatar_url: string;
+  success: boolean;
 }
 
 /**

@@ -92,7 +92,7 @@ export default function TenderDetailPage() {
 
   const hasBid = !!tender.my_bid;
   const isClosed = tender.status !== "open";
-  const isPastDue = tender.bid_due_date && new Date(tender.bid_due_date) < new Date();
+  const isPastDue = !!(tender.bid_due_date && new Date(tender.bid_due_date) < new Date());
 
   return (
     <div className="space-y-6">
@@ -188,7 +188,7 @@ export default function TenderDetailPage() {
                   {tender.status}
                 </Badge>
                 {tender.priority && (
-                  <Badge variant={tender.priority === "high" ? "destructive" : "outline"} size="lg">
+                  <Badge variant={tender.priority === "high" ? "error" : "outline"} size="lg">
                     {tender.priority} priority
                   </Badge>
                 )}

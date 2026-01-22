@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils/cn";
 import { useUser } from "@/hooks/useAuth";
 import { ROUTES } from "@/lib/constants/routes";
@@ -98,7 +97,7 @@ const bottomNavItems: NavItem[] = [
   },
 ];
 
-export function Sidebar() {
+function SidebarComponent() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const pathname = usePathname();
   const { profile } = useUser();
@@ -110,7 +109,6 @@ export function Sidebar() {
       "--sidebar-current-width",
       isCollapsed ? "var(--sidebar-collapsed-width)" : "var(--sidebar-width)",
     );
-    // Also set a data attribute for CSS selectors
     root.dataset.sidebarCollapsed = isCollapsed ? "true" : "false";
   }, [isCollapsed]);
 
@@ -126,26 +124,18 @@ export function Sidebar() {
   );
 
   const isActive = (href: string) => {
-    if (href === "/") {
-      return pathname === "/";
-    }
+    if (href === "/") return pathname === "/";
     return pathname.startsWith(href);
   };
 
-  const sidebarWidth = isCollapsed
-    ? "var(--sidebar-collapsed-width)"
-    : "var(--sidebar-width)";
-
   return (
-    <motion.aside
-      initial={false}
-      animate={{ width: sidebarWidth }}
-      transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+    <aside
       className={cn(
         "fixed left-0 top-0 z-40 h-screen",
         "bg-sidebar text-sidebar-foreground",
         "border-r border-white/5",
-        "shadow-xl",
+        "shadow-xl transition-all duration-300",
+        isCollapsed ? "w-[var(--sidebar-collapsed-width)]" : "w-[var(--sidebar-width)]",
       )}
     >
       <div className="relative flex h-full flex-col">
@@ -157,98 +147,70 @@ export function Sidebar() {
             isCollapsed ? "justify-center" : "justify-between",
           )}
         >
-          <Link
-            href={ROUTES.DASHBOARD}
-            className="flex items-center gap-3 group"
-          >
-            <motion.div
+          <Link href={ROUTES.DASHBOARD} className="flex items-center gap-3">
+            <div
               className={cn(
                 "flex h-10 w-10 items-center justify-center rounded-xl",
                 "bg-gradient-to-br from-primary to-primary-deep",
                 "shadow-lg",
               )}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
             >
               <HardHat className="h-5 w-5 text-white" />
-            </motion.div>
-            <AnimatePresence>
-              {!isCollapsed && (
-                <motion.div
-                  initial={{ opacity: 0, width: 0 }}
-                  animate={{ opacity: 1, width: "auto" }}
-                  exit={{ opacity: 0, width: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="overflow-hidden"
-                >
-                  <div className="flex flex-col whitespace-nowrap">
-                    <span className="text-lg font-bold text-white tracking-tight">
-                      BlueprintX
-                    </span>
-                    <span className="text-[10px] font-semibold text-steel-400 uppercase tracking-widest">
-                      Construction
-                    </span>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            </div>
+            {!isCollapsed && (
+              <div className="flex flex-col whitespace-nowrap">
+                <span className="text-lg font-bold text-white tracking-tight">
+                  BlueprintX
+                </span>
+                <span className="text-[10px] font-semibold text-steel-400 uppercase tracking-widest">
+                  Construction
+                </span>
+              </div>
+            )}
           </Link>
 
           {!isCollapsed && (
-            <motion.button
+            <button
               onClick={() => setIsCollapsed(true)}
               className={cn(
                 "flex h-8 w-8 items-center justify-center rounded-lg",
-                "text-steel-400 hover:text-white",
-                "hover:bg-white/5",
+                "text-steel-400 hover:text-white hover:bg-white/5",
                 "transition-colors duration-200",
               )}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
               aria-label="Collapse sidebar"
             >
               <ChevronLeft className="h-4 w-4" />
-            </motion.button>
+            </button>
           )}
         </div>
 
         {/* Expand button when collapsed */}
         {isCollapsed && (
-          <motion.button
+          <button
             onClick={() => setIsCollapsed(false)}
             className={cn(
               "absolute -right-3 top-20 z-50",
               "flex h-6 w-6 items-center justify-center rounded-full",
-              "bg-primary text-white",
-              "shadow-lg",
-              "hover:bg-primary-hover",
+              "bg-primary text-white shadow-lg hover:bg-primary-hover",
             )}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
             aria-label="Expand sidebar"
           >
             <ChevronLeft className="h-3 w-3 rotate-180" />
-          </motion.button>
+          </button>
         )}
 
         {/* Main Navigation */}
         <nav className="flex-1 overflow-y-auto p-3">
           <ul className="space-y-1">
-            {filteredNavItems.map((item, index) => {
+            {filteredNavItems.map((item) => {
               const active = isActive(item.href);
               return (
-                <motion.li
-                  key={item.href}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.05, duration: 0.3 }}
-                >
+                <li key={item.href}>
                   <Link
                     href={item.href}
                     className={cn(
                       "relative flex items-center gap-3 rounded-xl px-3 py-3",
-                      "transition-all duration-200",
-                      "group",
+                      "transition-colors duration-150",
                       isCollapsed && "justify-center px-0",
                       active
                         ? "bg-primary/15 text-white"
@@ -256,45 +218,24 @@ export function Sidebar() {
                     )}
                     title={isCollapsed ? item.label : undefined}
                   >
-                    {/* Active indicator */}
                     {active && (
-                      <motion.div
-                        layoutId="activeIndicator"
+                      <div
                         className={cn(
                           "absolute left-0 top-1/2 -translate-y-1/2",
-                          "w-1 h-8 rounded-r-full",
-                          "bg-primary",
+                          "w-1 h-8 rounded-r-full bg-primary",
                         )}
-                        transition={{
-                          type: "spring",
-                          stiffness: 300,
-                          damping: 30,
-                        }}
                       />
                     )}
-
-                    <motion.span
-                      className={cn("flex-shrink-0", active && "text-primary")}
-                      whileHover={{ scale: 1.1 }}
-                    >
+                    <span className={cn("flex-shrink-0", active && "text-primary")}>
                       {item.icon}
-                    </motion.span>
-
-                    <AnimatePresence>
-                      {!isCollapsed && (
-                        <motion.span
-                          initial={{ opacity: 0, width: 0 }}
-                          animate={{ opacity: 1, width: "auto" }}
-                          exit={{ opacity: 0, width: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="text-sm font-semibold tracking-wide whitespace-nowrap overflow-hidden"
-                        >
-                          {item.label}
-                        </motion.span>
-                      )}
-                    </AnimatePresence>
+                    </span>
+                    {!isCollapsed && (
+                      <span className="text-sm font-semibold tracking-wide">
+                        {item.label}
+                      </span>
+                    )}
                   </Link>
-                </motion.li>
+                </li>
               );
             })}
           </ul>
@@ -311,7 +252,7 @@ export function Sidebar() {
                     href={item.href}
                     className={cn(
                       "relative flex items-center gap-3 rounded-xl px-3 py-3",
-                      "transition-all duration-200",
+                      "transition-colors duration-150",
                       isCollapsed && "justify-center px-0",
                       active
                         ? "bg-primary/15 text-white"
@@ -323,31 +264,18 @@ export function Sidebar() {
                       <div
                         className={cn(
                           "absolute left-0 top-1/2 -translate-y-1/2",
-                          "w-1 h-8 rounded-r-full",
-                          "bg-primary",
+                          "w-1 h-8 rounded-r-full bg-primary",
                         )}
                       />
                     )}
-
-                    <span
-                      className={cn("flex-shrink-0", active && "text-primary")}
-                    >
+                    <span className={cn("flex-shrink-0", active && "text-primary")}>
                       {item.icon}
                     </span>
-
-                    <AnimatePresence>
-                      {!isCollapsed && (
-                        <motion.span
-                          initial={{ opacity: 0, width: 0 }}
-                          animate={{ opacity: 1, width: "auto" }}
-                          exit={{ opacity: 0, width: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="text-sm font-semibold tracking-wide whitespace-nowrap overflow-hidden"
-                        >
-                          {item.label}
-                        </motion.span>
-                      )}
-                    </AnimatePresence>
+                    {!isCollapsed && (
+                      <span className="text-sm font-semibold tracking-wide">
+                        {item.label}
+                      </span>
+                    )}
                   </Link>
                 </li>
               );
@@ -355,6 +283,9 @@ export function Sidebar() {
           </ul>
         </div>
       </div>
-    </motion.aside>
+    </aside>
   );
 }
+
+// Memoize to prevent unnecessary re-renders
+export const Sidebar = memo(SidebarComponent);

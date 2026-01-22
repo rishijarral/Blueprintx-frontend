@@ -143,11 +143,12 @@ export function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Fetch unread count
+  // Fetch unread count - reduced polling frequency for dev performance
   const { data: unreadData } = useQuery({
     queryKey: queryKeys.notifications.unreadCount,
     queryFn: () => notificationsApi.getUnreadCount(),
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 60000, // Refetch every 60 seconds (was 30s)
+    staleTime: 30000, // Consider data fresh for 30 seconds
   });
 
   // Fetch notifications when dropdown is open

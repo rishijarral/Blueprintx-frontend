@@ -1,81 +1,29 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getClient } from "@/lib/supabase/client";
-import { profileApi } from "@/lib/api/profile";
+import { profileApi, type UpdateProfileInput } from "@/lib/api/profile";
+import { clearTokenCache } from "@/lib/api/client";
+import { useAuthContext } from "@/contexts/AuthContext";
 import { ROUTES } from "@/lib/constants/routes";
 import { queryKeys } from "@/types/api";
-import type { Profile } from "@/types/models";
-import type { User, Session } from "@supabase/supabase-js";
-
-interface AuthState {
-  user: User | null;
-  session: Session | null;
-  isLoading: boolean;
-  isAuthenticated: boolean;
-}
 
 /**
  * Hook to access current auth state
+ * Uses shared AuthContext to avoid duplicate Supabase calls
  */
-export function useAuth(): AuthState {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const supabase = getClient();
-    let mounted = true;
-
-    // Get initial session
-    supabase.auth
-      .getSession()
-      .then(({ data: { session } }) => {
-        if (mounted) {
-          setSession(session);
-          setUser(session?.user ?? null);
-          setIsLoading(false);
-        }
-      })
-      .catch((error) => {
-        console.error("Auth error:", error);
-        if (mounted) {
-          setIsLoading(false);
-        }
-      });
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (mounted) {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setIsLoading(false);
-      }
-    });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  return {
-    user,
-    session,
-    isLoading,
-    isAuthenticated: !!user,
-  };
+export function useAuth() {
+  return useAuthContext();
 }
 
 /**
  * Hook to get current user with profile data
+ * Profile is cached for 10 minutes to reduce API calls
  */
 export function useUser() {
-  const { user, session, isLoading: authLoading, isAuthenticated } = useAuth();
+  const { user, session, isLoading: authLoading, isAuthenticated } = useAuthContext();
 
   const {
     data: profile,
@@ -85,7 +33,8 @@ export function useUser() {
     queryKey: queryKeys.profile,
     queryFn: () => profileApi.getMe(),
     enabled: isAuthenticated,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 10 * 60 * 1000, // 10 minutes - profile rarely changes
+    gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
   });
 
   return {
@@ -179,16 +128,13 @@ export function useSignUp() {
  */
 export function useSignOut() {
   const router = useRouter();
-  const queryClient = useQueryClient();
+  const { signOut } = useAuthContext();
 
   return useMutation({
     mutationFn: async () => {
-      const supabase = getClient();
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      await signOut();
     },
     onSuccess: () => {
-      queryClient.clear();
       router.push(ROUTES.LOGIN);
     },
   });
@@ -196,12 +142,13 @@ export function useSignOut() {
 
 /**
  * Hook for updating profile
+ * Uses the UpdateProfileInput type for type-safe updates
  */
 export function useUpdateProfile() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: Partial<Profile>) => profileApi.updateMe(data),
+    mutationFn: (data: UpdateProfileInput) => profileApi.updateMe(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.profile });
     },
@@ -219,6 +166,28 @@ export function useResetPassword() {
         redirectTo: `${window.location.origin}/reset-password`,
       });
       if (error) throw error;
+    },
+  });
+}
+
+/**
+ * Hook for changing email address
+ * Sends a verification to the new email address
+ */
+export function useChangeEmail() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (newEmail: string) => {
+      const supabase = getClient();
+      const { error } = await supabase.auth.updateUser({
+        email: newEmail,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      // Invalidate profile since email might be included
+      queryClient.invalidateQueries({ queryKey: queryKeys.profile });
     },
   });
 }

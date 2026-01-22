@@ -39,12 +39,12 @@ const STATUS_OPTIONS = [
   { value: "withdrawn", label: "Withdrawn" },
 ];
 
-const statusConfig: Record<string, { icon: React.ReactNode; variant: "default" | "success" | "warning" | "destructive" | "outline" }> = {
+const statusConfig: Record<string, { icon: React.ReactNode; variant: "default" | "success" | "warning" | "error" | "outline" }> = {
   submitted: { icon: <Clock className="h-3 w-3" />, variant: "default" },
   under_review: { icon: <Clock className="h-3 w-3" />, variant: "warning" },
   shortlisted: { icon: <CheckCircle className="h-3 w-3" />, variant: "success" },
   accepted: { icon: <Trophy className="h-3 w-3" />, variant: "success" },
-  rejected: { icon: <XCircle className="h-3 w-3" />, variant: "destructive" },
+  rejected: { icon: <XCircle className="h-3 w-3" />, variant: "error" },
   withdrawn: { icon: <XCircle className="h-3 w-3" />, variant: "outline" },
 };
 
@@ -155,7 +155,7 @@ export default function MyBidsPage() {
                 !statusFilter
                   ? {
                       label: "Browse Tenders",
-                      href: "/marketplace",
+                      onClick: () => window.location.href = "/marketplace",
                     }
                   : {
                       label: "Clear Filter",

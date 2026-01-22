@@ -240,17 +240,90 @@ export type ProfileFormData = z.infer<typeof profileSchema>;
 // ============================================
 
 export const notificationSettingsSchema = z.object({
-  email_new_bid: z.boolean(),
-  email_bid_status: z.boolean(),
-  email_new_tender: z.boolean(),
-  email_rfi_update: z.boolean(),
-  email_task_assigned: z.boolean(),
-  push_enabled: z.boolean(),
+  email_notifications: z.boolean(),
+  push_notifications: z.boolean(),
+  bid_updates: z.boolean(),
+  rfi_alerts: z.boolean(),
+  task_reminders: z.boolean(),
+  weekly_reports: z.boolean(),
 });
 
 export type NotificationSettingsFormData = z.infer<
   typeof notificationSettingsSchema
 >;
+
+/**
+ * Schema for changing email address
+ * Requires current password for security verification
+ */
+export const changeEmailSchema = z.object({
+  new_email: z
+    .string()
+    .email("Please enter a valid email address")
+    .min(1, "Email is required"),
+  password: z
+    .string()
+    .min(1, "Current password is required for verification"),
+});
+
+export type ChangeEmailFormData = z.infer<typeof changeEmailSchema>;
+
+/**
+ * Schema for changing password
+ * Validates password strength requirements
+ */
+export const changePasswordSchema = z
+  .object({
+    current_password: z.string().min(1, "Current password is required"),
+    new_password: z
+      .string()
+      .min(8, "Password must be at least 8 characters")
+      .regex(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+        "Password must contain at least one uppercase letter, one lowercase letter, and one number"
+      ),
+    confirm_password: z.string().min(1, "Please confirm your new password"),
+  })
+  .refine((data) => data.new_password === data.confirm_password, {
+    message: "Passwords do not match",
+    path: ["confirm_password"],
+  })
+  .refine((data) => data.current_password !== data.new_password, {
+    message: "New password must be different from current password",
+    path: ["new_password"],
+  });
+
+export type ChangePasswordFormData = z.infer<typeof changePasswordSchema>;
+
+/**
+ * Schema for account deletion
+ * Requires email confirmation and password for security
+ */
+export const deleteAccountSchema = z.object({
+  confirm_email: z
+    .string()
+    .email("Please enter a valid email address")
+    .min(1, "Email confirmation is required"),
+  password: z.string().min(1, "Password is required for verification"),
+  reason: z
+    .string()
+    .max(500, "Reason must be 500 characters or less")
+    .optional(),
+  acknowledge: z
+    .boolean()
+    .refine((val) => val === true, {
+      message: "You must acknowledge that this action is irreversible",
+    }),
+});
+
+export type DeleteAccountFormData = z.infer<typeof deleteAccountSchema>;
+
+/**
+ * Schema for theme preference
+ */
+export const themePreferenceSchema = z.enum(["light", "dark", "system"]);
+
+export type ThemePreferenceFormData = z.infer<typeof themePreferenceSchema>;
 
 // ============================================
 // AI Forms

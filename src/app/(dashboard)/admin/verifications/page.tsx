@@ -110,21 +110,13 @@ export default function VerificationsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "verifications"] });
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats });
-      showToast({
-        title: "Verification Approved",
-        description: "The subcontractor has been successfully verified.",
-        type: "success",
-      });
+      showToast.success("Verification Approved", "The subcontractor has been successfully verified.");
       setApproveModalOpen(false);
       setSelectedVerification(null);
       setApproveNotes("");
     },
     onError: (error: Error) => {
-      showToast({
-        title: "Approval Failed",
-        description: error.message || "Failed to approve verification.",
-        type: "error",
-      });
+      showToast.error("Approval Failed", error.message || "Failed to approve verification.");
     },
   });
 
@@ -135,21 +127,13 @@ export default function VerificationsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "verifications"] });
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.stats });
-      showToast({
-        title: "Verification Rejected",
-        description: "The verification request has been rejected.",
-        type: "success",
-      });
+      showToast.success("Verification Rejected", "The verification request has been rejected.");
       setRejectModalOpen(false);
       setSelectedVerification(null);
       setRejectReason("");
     },
     onError: (error: Error) => {
-      showToast({
-        title: "Rejection Failed",
-        description: error.message || "Failed to reject verification.",
-        type: "error",
-      });
+      showToast.error("Rejection Failed", error.message || "Failed to reject verification.");
     },
   });
 
@@ -249,7 +233,7 @@ export default function VerificationsPage() {
       {isLoading ? (
         <Card variant="bordered">
           <CardContent className="p-0">
-            <SkeletonTable rows={5} columns={6} />
+            <SkeletonTable rows={5} cols={6} />
           </CardContent>
         </Card>
       ) : verifications.length === 0 ? (

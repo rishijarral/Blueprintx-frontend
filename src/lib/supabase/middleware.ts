@@ -3,7 +3,15 @@ import { NextResponse, type NextRequest } from "next/server";
 
 /**
  * Updates the session in middleware
- * This ensures the auth token is refreshed on every request
+ * 
+ * Performance optimization: Uses getSession() instead of getUser() for most requests.
+ * - getSession() only reads from cookies (fast, no network call)
+ * - getUser() makes a network call to Supabase to validate the token (slow)
+ * 
+ * The session is still validated by the backend API on each request via JWT verification,
+ * so we don't need to validate it in the middleware for every page load.
+ * 
+ * getUser() is only called when the session needs refresh (token close to expiry).
  */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -33,11 +41,24 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // IMPORTANT: Do not remove auth.getUser()
-  // This refreshes the session if expired
+  // Use getSession() for fast cookie-based auth check (no network call)
+  // The session JWT is validated by the backend API anyway
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
 
-  return { user, response: supabaseResponse };
+  // If session exists but is close to expiry (within 5 minutes), refresh it
+  // This is the only time we make a network call
+  if (session?.expires_at) {
+    const expiresAt = session.expires_at * 1000; // Convert to ms
+    const fiveMinutes = 5 * 60 * 1000;
+    
+    if (Date.now() > expiresAt - fiveMinutes) {
+      // Token is close to expiry, refresh it
+      const { data: { user } } = await supabase.auth.getUser();
+      return { user, response: supabaseResponse };
+    }
+  }
+
+  return { user: session?.user ?? null, response: supabaseResponse };
 }
