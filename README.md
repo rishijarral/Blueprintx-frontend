@@ -65,7 +65,7 @@ Construction project management platform with AI-powered document analysis. Buil
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/blueprintx-frontend.git
+git clone https://github.com/rishijarral/blueprintx-frontend.git
 cd blueprintx-frontend
 
 # Install dependencies
