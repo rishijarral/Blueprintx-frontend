@@ -27,24 +27,40 @@ export function useAuth(): AuthState {
 
   useEffect(() => {
     const supabase = getClient();
+    let mounted = true;
 
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setIsLoading(false);
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
+        if (mounted) {
+          setSession(session);
+          setUser(session?.user ?? null);
+          setIsLoading(false);
+        }
+      })
+      .catch((error) => {
+        console.error("Auth error:", error);
+        if (mounted) {
+          setIsLoading(false);
+        }
+      });
 
     // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setIsLoading(false);
+      if (mounted) {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setIsLoading(false);
+      }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   return {
@@ -227,14 +243,16 @@ export function useUpdatePassword() {
  */
 export function useAccessToken() {
   const { session } = useAuth();
-  
+
   const getAccessToken = useCallback(async () => {
     if (session?.access_token) {
       return session.access_token;
     }
-    
+
     const supabase = getClient();
-    const { data: { session: freshSession } } = await supabase.auth.getSession();
+    const {
+      data: { session: freshSession },
+    } = await supabase.auth.getSession();
     return freshSession?.access_token ?? null;
   }, [session]);
 

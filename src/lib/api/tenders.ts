@@ -1,19 +1,27 @@
-import { apiGet, apiPost, apiPut, apiDelete } from "./client";
-import type { Tender, CreateTenderInput, UpdateTenderInput } from "@/types/models";
-import type { PaginatedResponse, PaginationParams, FilterParams } from "@/types/api";
+import { apiGet, apiGetPaginated, apiPost, apiPut, apiDelete } from "./client";
+import type {
+  Tender,
+  CreateTenderInput,
+  UpdateTenderInput,
+} from "@/types/models";
+import type {
+  PaginatedResponse,
+  PaginationParams,
+  FilterParams,
+} from "@/types/api";
 
 export const tendersApi = {
   /**
-   * List all tenders for the current user
+   * List all tenders for the current user (across all projects)
    */
   list: (params?: PaginationParams & FilterParams) =>
-    apiGet<PaginatedResponse<Tender>>("/api/tenders", params),
+    apiGetPaginated<Tender>("/api/tenders", params),
 
   /**
    * List tenders for a specific project
    */
   listByProject: (projectId: string, params?: PaginationParams) =>
-    apiGet<PaginatedResponse<Tender>>(`/api/projects/${projectId}/tenders`, params),
+    apiGetPaginated<Tender>(`/api/projects/${projectId}/tenders`, params),
 
   /**
    * Get a single tender
@@ -42,8 +50,10 @@ export const tendersApi = {
   /**
    * Get tender marketplace (open tenders for subcontractors)
    */
-  marketplace: (params?: PaginationParams & FilterParams & { trade?: string }) =>
-    apiGet<PaginatedResponse<Tender>>("/api/tenders", {
+  marketplace: (
+    params?: PaginationParams & FilterParams & { trade?: string },
+  ) =>
+    apiGetPaginated<Tender>("/api/tenders", {
       ...params,
       status: "open",
     }),

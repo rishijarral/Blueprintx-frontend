@@ -9,3 +9,5 @@ export {
   useUpdatePassword,
   useAccessToken,
 } from "./useAuth";
+
+export { useIngestionProgress } from "./useIngestionProgress";

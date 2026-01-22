@@ -1,13 +1,23 @@
-import { apiGet, apiPost, apiDelete, apiUpload } from "./client";
+import {
+  apiGet,
+  apiGetPaginated,
+  apiPost,
+  apiDelete,
+  apiUpload,
+} from "./client";
 import type { Document, CreateDocumentInput } from "@/types/models";
-import type { PaginatedResponse, PaginationParams, DocumentUploadResponse } from "@/types/api";
+import type {
+  PaginatedResponse,
+  PaginationParams,
+  DocumentUploadResponse,
+} from "@/types/api";
 
 export const documentsApi = {
   /**
    * List documents for a project
    */
   list: (projectId: string, params?: PaginationParams) =>
-    apiGet<PaginatedResponse<Document>>(`/api/projects/${projectId}/documents`, params),
+    apiGetPaginated<Document>(`/api/projects/${projectId}/documents`, params),
 
   /**
    * Get a single document
@@ -27,21 +37,20 @@ export const documentsApi = {
   upload: (
     projectId: string,
     file: File,
-    metadata: CreateDocumentInput,
-    onProgress?: (progress: number) => void
+    metadata?: Partial<CreateDocumentInput>,
+    onProgress?: (progress: number) => void,
   ) => {
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("name", metadata.name);
-    formData.append("document_type", metadata.document_type);
-    if (metadata.description) formData.append("description", metadata.description);
-    if (metadata.category) formData.append("category", metadata.category);
-    if (metadata.author) formData.append("author", metadata.author);
+
+    if (metadata?.document_type) {
+      formData.append("document_type", metadata.document_type);
+    }
 
     return apiUpload<DocumentUploadResponse>(
       `/api/projects/${projectId}/documents/upload`,
       formData,
-      onProgress
+      onProgress,
     );
   },
 

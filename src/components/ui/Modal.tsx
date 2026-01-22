@@ -17,6 +17,7 @@ export interface ModalProps {
   closeOnOverlayClick?: boolean;
   closeOnEscape?: boolean;
   footer?: ReactNode;
+  variant?: "default" | "glass";
 }
 
 function Modal({
@@ -30,6 +31,7 @@ function Modal({
   closeOnOverlayClick = true,
   closeOnEscape = true,
   footer,
+  variant = "default",
 }: ModalProps) {
   const sizes = {
     sm: "max-w-sm",
@@ -39,6 +41,16 @@ function Modal({
     full: "max-w-4xl",
   };
 
+  const variants = {
+    default: cn("bg-card border border-border", "shadow-2xl"),
+    glass: cn(
+      "bg-white/80 dark:bg-steel-900/90",
+      "backdrop-blur-2xl",
+      "border border-white/30 dark:border-white/10",
+      "shadow-glass",
+    ),
+  };
+
   // Handle escape key
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
@@ -46,7 +58,7 @@ function Modal({
         onClose();
       }
     },
-    [onClose, closeOnEscape]
+    [onClose, closeOnEscape],
   );
 
   // Handle body scroll lock and escape key
@@ -72,9 +84,13 @@ function Modal({
       aria-labelledby={title ? "modal-title" : undefined}
       aria-describedby={description ? "modal-description" : undefined}
     >
-      {/* Overlay */}
+      {/* Overlay with blur */}
       <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
+        className={cn(
+          "fixed inset-0 bg-black/40 dark:bg-black/60",
+          "backdrop-blur-sm",
+          "animate-fade-in",
+        )}
         onClick={closeOnOverlayClick ? onClose : undefined}
         aria-hidden="true"
       />
@@ -82,19 +98,21 @@ function Modal({
       {/* Modal Content */}
       <div
         className={cn(
-          "relative z-10 w-full bg-card rounded-xl shadow-xl animate-scale-in",
+          "relative z-10 w-full rounded-2xl",
           "max-h-[90vh] flex flex-col",
-          sizes[size]
+          "animate-scale-in",
+          variants[variant],
+          sizes[size],
         )}
       >
         {/* Header */}
         {(title || showCloseButton) && (
-          <div className="flex items-start justify-between p-6 pb-0">
+          <div className="flex items-start justify-between p-6 pb-2">
             <div>
               {title && (
                 <h2
                   id="modal-title"
-                  className="text-lg font-semibold text-card-foreground"
+                  className="text-xl font-bold text-card-foreground tracking-tight"
                 >
                   {title}
                 </h2>
@@ -102,7 +120,7 @@ function Modal({
               {description && (
                 <p
                   id="modal-description"
-                  className="mt-1 text-sm text-muted-foreground"
+                  className="mt-1.5 text-sm text-muted-foreground"
                 >
                   {description}
                 </p>
@@ -113,21 +131,29 @@ function Modal({
                 variant="ghost"
                 size="icon"
                 onClick={onClose}
-                className="h-8 w-8 -mr-2 -mt-2"
+                className={cn(
+                  "h-9 w-9 -mr-2 -mt-2 rounded-xl",
+                  "hover:bg-steel-200 dark:hover:bg-steel-700",
+                )}
                 aria-label="Close modal"
               >
-                <X className="h-4 w-4" />
+                <X className="h-5 w-5" />
               </Button>
             )}
           </div>
         )}
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6">{children}</div>
+        <div className="flex-1 overflow-y-auto p-6 pt-4">{children}</div>
 
         {/* Footer */}
         {footer && (
-          <div className="flex items-center justify-end gap-3 border-t border-border p-6 pt-4">
+          <div
+            className={cn(
+              "flex items-center justify-end gap-3 p-6 pt-4",
+              "border-t border-border/50",
+            )}
+          >
             {footer}
           </div>
         )}

@@ -19,14 +19,22 @@ export interface DropdownProps {
   className?: string;
 }
 
-function Dropdown({ trigger, items, align = "left", className }: DropdownProps) {
+function Dropdown({
+  trigger,
+  items,
+  align = "left",
+  className,
+}: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close on outside click
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     }
@@ -58,9 +66,15 @@ function Dropdown({ trigger, items, align = "left", className }: DropdownProps) 
       {isOpen && (
         <div
           className={cn(
-            "absolute z-50 mt-2 min-w-[160px] rounded-lg border border-border bg-popover p-1 shadow-lg",
-            "animate-slide-down",
-            align === "left" ? "left-0" : "right-0"
+            "absolute z-50 mt-2 min-w-[200px]",
+            "rounded-xl p-1.5",
+            // Glassmorphism effect
+            "bg-white/90 dark:bg-steel-800/95",
+            "backdrop-blur-xl",
+            "border border-white/50 dark:border-white/10",
+            "shadow-lg shadow-black/10 dark:shadow-black/30",
+            "animate-fade-in-down",
+            align === "left" ? "left-0" : "right-0",
           )}
           role="menu"
         >
@@ -74,13 +88,31 @@ function Dropdown({ trigger, items, align = "left", className }: DropdownProps) 
                 setIsOpen(false);
               }}
               className={cn(
-                "flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-popover-foreground",
-                "hover:bg-muted focus:bg-muted focus:outline-none",
+                "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm",
+                "text-popover-foreground font-medium",
+                "transition-all duration-150",
+                "hover:bg-steel-100 dark:hover:bg-steel-700",
+                "focus:bg-steel-100 dark:focus:bg-steel-700 focus:outline-none",
                 "disabled:pointer-events-none disabled:opacity-50",
-                item.destructive && "text-destructive hover:bg-destructive/10 focus:bg-destructive/10"
+                "active:scale-[0.98]",
+                item.destructive &&
+                  cn(
+                    "text-destructive",
+                    "hover:bg-destructive/10 focus:bg-destructive/10",
+                    "dark:hover:bg-destructive/20 dark:focus:bg-destructive/20",
+                  ),
               )}
             >
-              {item.icon && <span className="h-4 w-4">{item.icon}</span>}
+              {item.icon && (
+                <span
+                  className={cn(
+                    "h-4 w-4 flex-shrink-0",
+                    !item.destructive && "text-muted-foreground",
+                  )}
+                >
+                  {item.icon}
+                </span>
+              )}
               {item.label}
             </button>
           ))}

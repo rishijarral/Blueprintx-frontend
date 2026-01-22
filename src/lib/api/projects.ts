@@ -1,13 +1,21 @@
-import { apiGet, apiPost, apiPut, apiDelete } from "./client";
-import type { Project, CreateProjectInput, UpdateProjectInput } from "@/types/models";
-import type { PaginatedResponse, PaginationParams, FilterParams } from "@/types/api";
+import { apiGet, apiGetPaginated, apiPost, apiPut, apiDelete } from "./client";
+import type {
+  Project,
+  CreateProjectInput,
+  UpdateProjectInput,
+} from "@/types/models";
+import type {
+  PaginatedResponse,
+  PaginationParams,
+  FilterParams,
+} from "@/types/api";
 
 export const projectsApi = {
   /**
    * List all projects for the current user
    */
   list: (params?: PaginationParams & FilterParams) =>
-    apiGet<PaginatedResponse<Project>>("/api/projects", params),
+    apiGetPaginated<Project>("/api/projects", params),
 
   /**
    * Get a single project by ID

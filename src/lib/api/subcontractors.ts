@@ -1,13 +1,24 @@
-import { apiGet } from "./client";
+import { apiGet, apiGetPaginated } from "./client";
 import type { Subcontractor } from "@/types/models";
-import type { PaginatedResponse, PaginationParams, FilterParams } from "@/types/api";
+import type {
+  PaginatedResponse,
+  PaginationParams,
+  FilterParams,
+} from "@/types/api";
 
 export const subcontractorsApi = {
   /**
    * List subcontractors (marketplace/directory)
    */
-  list: (params?: PaginationParams & FilterParams & { trade?: string; location?: string }) =>
-    apiGet<PaginatedResponse<Subcontractor>>("/api/subcontractors", params),
+  list: (
+    params?: PaginationParams &
+      FilterParams & {
+        trade?: string;
+        location?: string;
+        verified_only?: boolean;
+        min_rating?: number;
+      },
+  ) => apiGetPaginated<Subcontractor>("/api/subcontractors", params),
 
   /**
    * Get a single subcontractor profile
@@ -18,7 +29,7 @@ export const subcontractorsApi = {
    * Search subcontractors
    */
   search: (query: string, params?: PaginationParams) =>
-    apiGet<PaginatedResponse<Subcontractor>>("/api/subcontractors", {
+    apiGetPaginated<Subcontractor>("/api/subcontractors", {
       ...params,
       search: query,
     }),

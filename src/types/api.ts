@@ -1,5 +1,6 @@
 /**
  * API response types and utilities
+ * These types match the Rust backend API responses exactly
  */
 
 // ============================================
@@ -7,28 +8,41 @@
 // ============================================
 
 /**
- * Standard API error response
+ * Standard API error response from backend
  */
 export interface APIError {
   error: string;
   message: string;
   status_code: number;
   details?: Record<string, unknown>;
+  request_id?: string;
 }
 
 /**
- * Paginated response wrapper
+ * Backend wraps all responses in { data: ... }
+ */
+export interface ApiResponse<T> {
+  data: T;
+}
+
+/**
+ * Paginated response wrapper - matches backend exactly
  */
 export interface PaginatedResponse<T> {
   data: T[];
   pagination: PaginationInfo;
 }
 
+/**
+ * Pagination info - matches backend field names exactly
+ */
 export interface PaginationInfo {
   page: number;
   per_page: number;
-  total: number;
+  total_items: number; // Backend uses total_items, not total
   total_pages: number;
+  has_next: boolean;
+  has_prev: boolean;
 }
 
 /**
@@ -71,8 +85,6 @@ export interface SignUpRequest {
   password: string;
   user_type: "gc" | "sub";
   company_name?: string;
-  first_name?: string;
-  last_name?: string;
 }
 
 export interface SignInRequest {
@@ -80,31 +92,31 @@ export interface SignInRequest {
   password: string;
 }
 
+/**
+ * Auth response when login/signup succeeds
+ */
 export interface AuthResponse {
   access_token: string;
   refresh_token: string;
-  token_type: string;
   expires_in: number;
-  expires_at: number;
   user: AuthUser;
+}
+
+/**
+ * Auth response when email confirmation is required
+ */
+export interface AuthConfirmationResponse {
+  user_id: string;
+  email: string;
+  confirmation_required: true;
+  message: string;
 }
 
 export interface AuthUser {
   id: string;
   email: string;
-  email_confirmed_at?: string;
+  user_type: "gc" | "sub";
   created_at: string;
-  updated_at: string;
-  app_metadata: {
-    provider?: string;
-    providers?: string[];
-  };
-  user_metadata: {
-    user_type?: string;
-    company_name?: string;
-    first_name?: string;
-    last_name?: string;
-  };
 }
 
 export interface RefreshTokenRequest {
@@ -114,7 +126,6 @@ export interface RefreshTokenRequest {
 export interface SessionResponse {
   user: AuthUser;
   access_token: string;
-  refresh_token: string;
   expires_at: number;
 }
 
@@ -123,23 +134,26 @@ export interface SessionResponse {
 // ============================================
 
 export interface PlanSummaryRequest {
-  document_ids?: string[];
+  document_text: string;
+  instructions?: string;
 }
 
 export interface TradeScopesRequest {
-  document_ids?: string[];
+  document_text: string;
   trades?: string[];
 }
 
 export interface TenderScopeDocRequest {
   trade: string;
-  tender_name: string;
-  additional_requirements?: string;
+  scope_data: Record<string, unknown>;
+  project_context?: string;
+  bid_due_date?: string;
 }
 
 export interface QnARequest {
   question: string;
-  document_ids?: string[];
+  document_id?: string;
+  document_text?: string;
 }
 
 // ============================================
@@ -200,7 +214,8 @@ export const queryKeys = {
       ["tenders", "list", params] as const,
     byProject: (projectId: string) =>
       ["projects", projectId, "tenders"] as const,
-    detail: (id: string) => ["tenders", "detail", id] as const,
+    detail: (projectId: string, tenderId: string) =>
+      ["projects", projectId, "tenders", "detail", tenderId] as const,
     marketplace: (params?: PaginationParams & FilterParams) =>
       ["tenders", "marketplace", params] as const,
   },
@@ -252,4 +267,125 @@ export const queryKeys = {
       ["projects", projectId, "ai", "trade-scopes"] as const,
     trades: ["ai", "trades"] as const,
   },
+
+  // Processing Jobs
+  jobs: {
+    byProject: (projectId: string) =>
+      ["projects", projectId, "jobs"] as const,
+    list: (projectId: string, params?: PaginationParams & FilterParams) =>
+      ["projects", projectId, "jobs", "list", params] as const,
+    detail: (projectId: string, jobId: string) =>
+      ["projects", projectId, "jobs", "detail", jobId] as const,
+  },
+
+  // Extraction
+  extraction: {
+    summary: (projectId: string) =>
+      ["projects", projectId, "extraction"] as const,
+    materials: (projectId: string, params?: PaginationParams & FilterParams) =>
+      ["projects", projectId, "extraction", "materials", params] as const,
+    rooms: (projectId: string, params?: PaginationParams & FilterParams) =>
+      ["projects", projectId, "extraction", "rooms", params] as const,
+    milestones: (projectId: string, params?: PaginationParams & FilterParams) =>
+      ["projects", projectId, "extraction", "milestones", params] as const,
+    tradeScopes: (projectId: string, params?: PaginationParams & FilterParams) =>
+      ["projects", projectId, "extraction", "trade-scopes", params] as const,
+  },
+
+  // Hiring namespace (includes external subs, requests, messages, contracts)
+  hiring: {
+    // External Subcontractors (My Subs)
+    externalSubs: {
+      all: ["my-subcontractors"] as const,
+      list: (params?: PaginationParams & FilterParams) =>
+        ["my-subcontractors", "list", params] as const,
+      detail: (id: string) => ["my-subcontractors", "detail", id] as const,
+    },
+    
+    // Hire Requests
+    requests: {
+      all: ["hiring"] as const,
+      list: (params?: PaginationParams & FilterParams) =>
+        ["hiring", "list", params] as const,
+      detail: (id: string) => ["hiring", "detail", id] as const,
+    },
+    
+    // Messages
+    messages: {
+      list: (requestId: string) =>
+        ["hiring", requestId, "messages"] as const,
+    },
+    
+    // Contracts
+    contracts: {
+      all: ["contracts"] as const,
+      list: (params?: PaginationParams & FilterParams) =>
+        ["contracts", "list", params] as const,
+      detail: (id: string) => ["contracts", "detail", id] as const,
+      templates: ["contract-templates"] as const,
+    },
+  },
+
+  // Project Team
+  team: {
+    byProject: (projectId: string) =>
+      ["projects", projectId, "team"] as const,
+    detail: (projectId: string, memberId: string) =>
+      ["projects", projectId, "team", "detail", memberId] as const,
+  },
+
+  // Marketplace (enhanced subcontractors)
+  marketplace: {
+    all: ["marketplace"] as const,
+    subcontractors: {
+      list: (params?: PaginationParams & FilterParams) =>
+        ["marketplace", "subcontractors", "list", params] as const,
+      detail: (id: string) => ["marketplace", "subcontractors", "detail", id] as const,
+      portfolio: (id: string) => ["marketplace", "subcontractors", id, "portfolio"] as const,
+    },
+    profile: ["marketplace", "profile"] as const,
+    portfolio: ["marketplace", "profile", "portfolio"] as const,
+    savedSearches: ["marketplace", "saved-searches"] as const,
+    tenders: {
+      list: (params?: PaginationParams & FilterParams) =>
+        ["marketplace", "tenders", "list", params] as const,
+      detail: (id: string) => ["marketplace", "tenders", "detail", id] as const,
+    },
+    myBids: (params?: PaginationParams & FilterParams) =>
+      ["marketplace", "my-bids", params] as const,
+  },
+
+  // Notifications
+  notifications: {
+    all: ["notifications"] as const,
+    list: (params?: PaginationParams & FilterParams) =>
+      ["notifications", "list", params] as const,
+    unreadCount: ["notifications", "unread-count"] as const,
+    detail: (id: string) => ["notifications", "detail", id] as const,
+  },
+
+  // Admin
+  admin: {
+    check: ["admin", "check"] as const,
+    stats: ["admin", "stats"] as const,
+    verifications: {
+      list: (params?: PaginationParams & FilterParams) =>
+        ["admin", "verifications", "list", params] as const,
+      detail: (id: string) => ["admin", "verifications", "detail", id] as const,
+    },
+    auditLog: (params?: PaginationParams & FilterParams) =>
+      ["admin", "audit-log", params] as const,
+  },
 } as const;
+
+// ============================================
+// New Request Types
+// ============================================
+
+export interface StartProcessingRequest {
+  auto_start?: boolean;
+}
+
+export interface JobControlRequest {
+  action: "pause" | "resume" | "cancel" | { retry_step: { step_key: string } } | "retry_job";
+}

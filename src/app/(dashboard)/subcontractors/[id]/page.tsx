@@ -3,22 +3,45 @@
 import { use } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Card, CardContent, CardHeader, CardTitle, Badge, Button, Avatar } from "@/components/ui";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Badge,
+  Button,
+  Avatar,
+} from "@/components/ui";
 import { LoadingPage, EmptyState } from "@/components/common";
 import { subcontractorsApi } from "@/lib/api";
 import { queryKeys } from "@/types/api";
 import { ROUTES } from "@/lib/constants/routes";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
-import { Users, Star, MapPin, Briefcase, CheckCircle, Mail, Phone, Clock } from "lucide-react";
+import {
+  Users,
+  Star,
+  MapPin,
+  Briefcase,
+  CheckCircle,
+  Mail,
+  Phone,
+  Clock,
+} from "lucide-react";
 
 interface SubcontractorDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
-export default function SubcontractorDetailPage({ params }: SubcontractorDetailPageProps) {
+export default function SubcontractorDetailPage({
+  params,
+}: SubcontractorDetailPageProps) {
   const resolvedParams = use(params);
 
-  const { data: subcontractor, isLoading, error } = useQuery({
+  const {
+    data: subcontractor,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: queryKeys.subcontractors.detail(resolvedParams.id),
     queryFn: () => subcontractorsApi.get(resolvedParams.id),
   });
@@ -76,7 +99,9 @@ export default function SubcontractorDetailPage({ params }: SubcontractorDetailP
                     {subcontractor.trade}
                   </Badge>
                   {subcontractor.description && (
-                    <p className="mt-4 text-muted-foreground">{subcontractor.description}</p>
+                    <p className="mt-4 text-muted-foreground">
+                      {subcontractor.description}
+                    </p>
                   )}
                 </div>
               </div>
@@ -104,7 +129,9 @@ export default function SubcontractorDetailPage({ params }: SubcontractorDetailP
                 <div className="text-2xl font-bold mb-1">
                   {subcontractor.projects_completed}
                 </div>
-                <p className="text-sm text-muted-foreground">Projects Completed</p>
+                <p className="text-sm text-muted-foreground">
+                  Projects Completed
+                </p>
               </CardContent>
             </Card>
 
@@ -115,7 +142,9 @@ export default function SubcontractorDetailPage({ params }: SubcontractorDetailP
                     ? formatCurrency(subcontractor.average_bid_value)
                     : "N/A"}
                 </div>
-                <p className="text-sm text-muted-foreground">Avg Project Value</p>
+                <p className="text-sm text-muted-foreground">
+                  Avg Project Value
+                </p>
               </CardContent>
             </Card>
 
@@ -130,53 +159,57 @@ export default function SubcontractorDetailPage({ params }: SubcontractorDetailP
           </div>
 
           {/* Specialties */}
-          {subcontractor.specialties && subcontractor.specialties.length > 0 && (
-            <Card variant="bordered">
-              <CardHeader>
-                <CardTitle>Specialties</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {subcontractor.specialties.map((specialty, index) => (
-                    <Badge key={index} variant="outline">
-                      {specialty}
-                    </Badge>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          {subcontractor.specialties &&
+            subcontractor.specialties.length > 0 && (
+              <Card variant="bordered">
+                <CardHeader>
+                  <CardTitle>Specialties</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {subcontractor.specialties.map((specialty, index) => (
+                      <Badge key={index} variant="outline">
+                        {specialty}
+                      </Badge>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
           {/* Recent Projects */}
-          {subcontractor.recent_projects && subcontractor.recent_projects.length > 0 && (
-            <Card variant="bordered">
-              <CardHeader>
-                <CardTitle>Recent Projects</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {subcontractor.recent_projects.map((project, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-3 rounded-lg border border-border"
-                    >
-                      <div>
-                        <p className="font-medium">{project.name}</p>
-                        {project.completed_date && (
-                          <p className="text-sm text-muted-foreground">
-                            Completed {formatDate(project.completed_date)}
-                          </p>
+          {subcontractor.recent_projects &&
+            subcontractor.recent_projects.length > 0 && (
+              <Card variant="bordered">
+                <CardHeader>
+                  <CardTitle>Recent Projects</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {subcontractor.recent_projects.map((project, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-3 rounded-lg border border-border"
+                      >
+                        <div>
+                          <p className="font-medium">{project.name}</p>
+                          {project.completed && (
+                            <p className="text-sm text-muted-foreground">
+                              Completed {formatDate(project.completed)}
+                            </p>
+                          )}
+                        </div>
+                        {project.value && (
+                          <span className="font-semibold">
+                            {formatCurrency(project.value)}
+                          </span>
                         )}
                       </div>
-                      {project.value && (
-                        <span className="font-semibold">{formatCurrency(project.value)}</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
         </div>
 
         {/* Sidebar */}
@@ -191,7 +224,9 @@ export default function SubcontractorDetailPage({ params }: SubcontractorDetailP
                   <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
                   <div>
                     <p className="text-sm font-medium">Location</p>
-                    <p className="text-sm text-muted-foreground">{subcontractor.location}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {subcontractor.location}
+                    </p>
                   </div>
                 </div>
               )}

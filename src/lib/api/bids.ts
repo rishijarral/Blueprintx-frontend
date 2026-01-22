@@ -1,13 +1,17 @@
-import { apiGet, apiPost, apiPut } from "./client";
+import { apiGet, apiGetPaginated, apiPost, apiPut } from "./client";
 import type { Bid, CreateBidInput, UpdateBidInput } from "@/types/models";
-import type { PaginatedResponse, PaginationParams, FilterParams } from "@/types/api";
+import type {
+  PaginatedResponse,
+  PaginationParams,
+  FilterParams,
+} from "@/types/api";
 
 export const bidsApi = {
   /**
-   * List bids for a tender
+   * List bids for a tender (only project owner can view)
    */
   listByTender: (tenderId: string, params?: PaginationParams) =>
-    apiGet<PaginatedResponse<Bid>>(`/api/tenders/${tenderId}/bids`, params),
+    apiGetPaginated<Bid>(`/api/tenders/${tenderId}/bids`, params),
 
   /**
    * Create a new bid (for subcontractors)
@@ -23,8 +27,33 @@ export const bidsApi = {
 
   /**
    * Get my bids (for subcontractors)
-   * Note: This endpoint might need to be added to the backend
+   * Note: Backend currently doesn't have this endpoint.
+   * Returns empty data until backend implements /api/bids
    */
-  myBids: (params?: PaginationParams & FilterParams) =>
-    apiGet<PaginatedResponse<Bid>>("/api/bids", params),
+  myBids: async (
+    params?: PaginationParams & FilterParams,
+  ): Promise<PaginatedResponse<Bid>> => {
+    try {
+      return await apiGetPaginated<Bid>("/api/bids", params);
+    } catch (error) {
+      // If endpoint doesn't exist (404), return empty response
+      if (error && typeof error === "object" && "status" in error) {
+        const apiError = error as { status: number };
+        if (apiError.status === 404) {
+          return {
+            data: [],
+            pagination: {
+              page: params?.page || 1,
+              per_page: params?.per_page || 20,
+              total_items: 0,
+              total_pages: 0,
+              has_next: false,
+              has_prev: false,
+            },
+          };
+        }
+      }
+      throw error;
+    }
+  },
 };

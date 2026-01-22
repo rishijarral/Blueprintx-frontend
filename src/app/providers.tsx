@@ -10,24 +10,40 @@ interface ProvidersProps {
   children: ReactNode;
 }
 
+/**
+ * Optimized React Query configuration for scalability
+ * 
+ * - Increased staleTime reduces unnecessary refetches
+ * - Longer gcTime keeps data in cache for faster navigation
+ * - refetchOnWindowFocus: 'always' only for fresh data on tab switch
+ * - refetchOnReconnect helps mobile/unstable connections
+ */
 export function Providers({ children }: ProvidersProps) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
         defaultOptions: {
           queries: {
-            // Stale time of 1 minute
-            staleTime: 60 * 1000,
-            // Cache time of 5 minutes
-            gcTime: 5 * 60 * 1000,
-            // Retry failed requests up to 3 times
+            // Data considered fresh for 2 minutes - reduces API calls
+            staleTime: 2 * 60 * 1000,
+            // Keep unused data in cache for 10 minutes - faster back navigation
+            gcTime: 10 * 60 * 1000,
+            // Retry failed requests with exponential backoff
             retry: 3,
-            // Refetch on window focus (good for real-time data)
+            retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+            // Refetch stale data on window focus (not all data)
             refetchOnWindowFocus: true,
+            // Refetch when coming back online
+            refetchOnReconnect: true,
+            // Don't refetch on mount if data is still fresh
+            refetchOnMount: true,
+            // Use placeholder data while fetching (reduces layout shift)
+            placeholderData: (previousData: unknown) => previousData,
           },
           mutations: {
-            // Retry mutations once on failure
+            // Retry mutations once on failure (with delay)
             retry: 1,
+            retryDelay: 1000,
           },
         },
       })
@@ -38,7 +54,9 @@ export function Providers({ children }: ProvidersProps) {
       <ErrorBoundary>
         <ToastProvider>{children}</ToastProvider>
       </ErrorBoundary>
-      <ReactQueryDevtools initialIsOpen={false} />
+      {process.env.NODE_ENV === "development" && (
+        <ReactQueryDevtools initialIsOpen={false} />
+      )}
     </QueryClientProvider>
   );
 }

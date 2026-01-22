@@ -3,10 +3,30 @@
 import { type ReactNode } from "react";
 import { cn } from "@/lib/utils/cn";
 import { Button } from "@/components/ui";
-import { FolderOpen, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
+import {
+  BlueprintIllustration,
+  ClipboardIllustration,
+  GavelIllustration,
+  ToolboxIllustration,
+  WorkersIllustration,
+  ErrorIllustration,
+  SearchEmptyIllustration,
+} from "@/components/illustrations";
+
+type IllustrationType =
+  | "blueprint"
+  | "clipboard"
+  | "gavel"
+  | "toolbox"
+  | "workers"
+  | "error"
+  | "search"
+  | "custom";
 
 interface EmptyStateProps {
   icon?: ReactNode;
+  illustration?: IllustrationType;
   title: string;
   description?: string;
   action?: {
@@ -14,36 +34,98 @@ interface EmptyStateProps {
     onClick: () => void;
     icon?: ReactNode;
   };
+  secondaryAction?: {
+    label: string;
+    onClick: () => void;
+  };
   className?: string;
 }
 
+const illustrations: Record<
+  Exclude<IllustrationType, "custom">,
+  React.FC<{ className?: string }>
+> = {
+  blueprint: BlueprintIllustration,
+  clipboard: ClipboardIllustration,
+  gavel: GavelIllustration,
+  toolbox: ToolboxIllustration,
+  workers: WorkersIllustration,
+  error: ErrorIllustration,
+  search: SearchEmptyIllustration,
+};
+
 export function EmptyState({
   icon,
+  illustration = "blueprint",
   title,
   description,
   action,
+  secondaryAction,
   className,
 }: EmptyStateProps) {
+  const IllustrationComponent =
+    illustration !== "custom" ? illustrations[illustration] : null;
+
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center py-12 px-4 text-center",
-        className
+        "flex flex-col items-center justify-center py-16 px-6 text-center",
+        "animate-fade-in-up",
+        className,
       )}
     >
-      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
-        {icon || <FolderOpen className="h-8 w-8 text-muted-foreground" />}
+      {/* Illustration or Icon */}
+      <div className="mb-6 animate-float">
+        {icon ? (
+          <div
+            className={cn(
+              "flex h-20 w-20 items-center justify-center rounded-2xl",
+              "bg-steel-100 dark:bg-steel-800",
+              "shadow-neu-outset-sm",
+            )}
+          >
+            {icon}
+          </div>
+        ) : IllustrationComponent ? (
+          <IllustrationComponent className="w-52 h-auto opacity-90" />
+        ) : null}
       </div>
-      <h3 className="text-lg font-semibold text-foreground mb-1">{title}</h3>
+
+      {/* Title */}
+      <h3
+        className={cn(
+          "text-xl font-bold text-foreground mb-2",
+          "tracking-tight",
+        )}
+      >
+        {title}
+      </h3>
+
+      {/* Description */}
       {description && (
-        <p className="text-sm text-muted-foreground max-w-sm mb-4">
+        <p className="text-base text-muted-foreground max-w-md mb-6 leading-relaxed">
           {description}
         </p>
       )}
-      {action && (
-        <Button onClick={action.onClick} leftIcon={action.icon || <Plus className="h-4 w-4" />}>
-          {action.label}
-        </Button>
+
+      {/* Actions */}
+      {(action || secondaryAction) && (
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          {action && (
+            <Button
+              onClick={action.onClick}
+              leftIcon={action.icon || <Plus className="h-4 w-4" />}
+              size="lg"
+            >
+              {action.label}
+            </Button>
+          )}
+          {secondaryAction && (
+            <Button variant="ghost" onClick={secondaryAction.onClick} size="lg">
+              {secondaryAction.label}
+            </Button>
+          )}
+        </div>
       )}
     </div>
   );

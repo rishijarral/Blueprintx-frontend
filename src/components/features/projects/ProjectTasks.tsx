@@ -2,15 +2,40 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle, Button, Badge, Modal, Input, Textarea, Select, Progress } from "@/components/ui";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Button,
+  Badge,
+  Modal,
+  Input,
+  Textarea,
+  Select,
+  Progress,
+} from "@/components/ui";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/common";
 import { useShowToast } from "@/components/ui/Toast";
 import { tasksApi } from "@/lib/api";
 import { queryKeys } from "@/types/api";
 import { formatDate } from "@/lib/utils/format";
-import { TASK_STATUS_COLORS, TASK_STATUS_LABELS, PRIORITY_COLORS, PRIORITY_LABELS } from "@/lib/constants/statuses";
-import { Plus, CheckSquare, Clock, User, MoreHorizontal, Edit, Trash2 } from "lucide-react";
+import {
+  TASK_STATUS_COLORS,
+  TASK_STATUS_LABELS,
+  PRIORITY_COLORS,
+  PRIORITY_LABELS,
+} from "@/lib/constants/statuses";
+import {
+  Plus,
+  CheckSquare,
+  Clock,
+  User,
+  MoreHorizontal,
+  Edit,
+  Trash2,
+} from "lucide-react";
 import type { CreateTaskInput, Task } from "@/types/models";
 
 interface ProjectTasksProps {
@@ -43,7 +68,9 @@ export function ProjectTasks({ projectId }: ProjectTasksProps) {
   const { mutate: createTask, isPending } = useMutation({
     mutationFn: (data: CreateTaskInput) => tasksApi.create(projectId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byProject(projectId) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.tasks.byProject(projectId),
+      });
       toast.success("Task created", "Your task has been created successfully.");
       setIsCreateModalOpen(false);
       setFormData({
@@ -63,17 +90,26 @@ export function ProjectTasks({ projectId }: ProjectTasksProps) {
   });
 
   const { mutate: updateTask } = useMutation({
-    mutationFn: ({ taskId, data }: { taskId: string; data: Partial<CreateTaskInput> }) =>
-      tasksApi.update(projectId, taskId, data),
+    mutationFn: ({
+      taskId,
+      data,
+    }: {
+      taskId: string;
+      data: Partial<CreateTaskInput>;
+    }) => tasksApi.update(projectId, taskId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byProject(projectId) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.tasks.byProject(projectId),
+      });
     },
   });
 
   const { mutate: deleteTask } = useMutation({
     mutationFn: (taskId: string) => tasksApi.delete(projectId, taskId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byProject(projectId) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.tasks.byProject(projectId),
+      });
       toast.success("Task deleted", "The task has been removed.");
     },
     onError: (error: Error) => {
@@ -88,15 +124,19 @@ export function ProjectTasks({ projectId }: ProjectTasksProps) {
     completed: tasks.filter((t) => t.status === "completed"),
   };
 
-  const priorityOptions = Object.entries(PRIORITY_LABELS).map(([value, label]) => ({
-    value,
-    label,
-  }));
+  const priorityOptions = Object.entries(PRIORITY_LABELS).map(
+    ([value, label]) => ({
+      value,
+      label,
+    }),
+  );
 
-  const statusOptions = Object.entries(TASK_STATUS_LABELS).map(([value, label]) => ({
-    value,
-    label,
-  }));
+  const statusOptions = Object.entries(TASK_STATUS_LABELS).map(
+    ([value, label]) => ({
+      value,
+      label,
+    }),
+  );
 
   const TaskCard = ({ task }: { task: Task }) => (
     <div className="rounded-lg border border-border p-4 bg-card hover:shadow-sm transition-shadow">
@@ -113,9 +153,11 @@ export function ProjectTasks({ projectId }: ProjectTasksProps) {
           </Button>
         </div>
       </div>
-      
+
       {task.description && (
-        <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{task.description}</p>
+        <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
+          {task.description}
+        </p>
       )}
 
       <div className="flex items-center justify-between text-xs">
@@ -142,9 +184,9 @@ export function ProjectTasks({ projectId }: ProjectTasksProps) {
         </div>
       </div>
 
-      {task.progress > 0 && (
+      {task.progress != null && task.progress > 0 && (
         <div className="mt-3">
-          <Progress value={task.progress} size="sm" />
+          <Progress value={task.progress ?? 0} size="sm" />
         </div>
       )}
     </div>
@@ -201,7 +243,9 @@ export function ProjectTasks({ projectId }: ProjectTasksProps) {
                 <TaskCard key={task.id} task={task} />
               ))}
               {tasksByStatus.todo.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">No tasks</p>
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No tasks
+                </p>
               )}
             </CardContent>
           </Card>
@@ -210,8 +254,12 @@ export function ProjectTasks({ projectId }: ProjectTasksProps) {
           <Card variant="bordered">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium">In Progress</CardTitle>
-                <Badge variant="secondary">{tasksByStatus.in_progress.length}</Badge>
+                <CardTitle className="text-sm font-medium">
+                  In Progress
+                </CardTitle>
+                <Badge variant="secondary">
+                  {tasksByStatus.in_progress.length}
+                </Badge>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -219,7 +267,9 @@ export function ProjectTasks({ projectId }: ProjectTasksProps) {
                 <TaskCard key={task.id} task={task} />
               ))}
               {tasksByStatus.in_progress.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">No tasks</p>
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No tasks
+                </p>
               )}
             </CardContent>
           </Card>
@@ -229,7 +279,9 @@ export function ProjectTasks({ projectId }: ProjectTasksProps) {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium">Completed</CardTitle>
-                <Badge variant="secondary">{tasksByStatus.completed.length}</Badge>
+                <Badge variant="secondary">
+                  {tasksByStatus.completed.length}
+                </Badge>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -237,7 +289,9 @@ export function ProjectTasks({ projectId }: ProjectTasksProps) {
                 <TaskCard key={task.id} task={task} />
               ))}
               {tasksByStatus.completed.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">No tasks</p>
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No tasks
+                </p>
               )}
             </CardContent>
           </Card>
@@ -253,7 +307,10 @@ export function ProjectTasks({ projectId }: ProjectTasksProps) {
         size="lg"
         footer={
           <>
-            <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setIsCreateModalOpen(false)}
+            >
               Cancel
             </Button>
             <Button
@@ -270,7 +327,9 @@ export function ProjectTasks({ projectId }: ProjectTasksProps) {
           <Input
             label="Task Title"
             value={formData.title}
-            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, title: e.target.value })
+            }
             placeholder="e.g., Review electrical plans"
             required
           />
@@ -278,7 +337,9 @@ export function ProjectTasks({ projectId }: ProjectTasksProps) {
           <Textarea
             label="Description"
             value={formData.description || ""}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, description: e.target.value })
+            }
             placeholder="Task details..."
             rows={3}
           />
@@ -289,7 +350,10 @@ export function ProjectTasks({ projectId }: ProjectTasksProps) {
               options={statusOptions}
               value={formData.status || "todo"}
               onChange={(e) =>
-                setFormData({ ...formData, status: e.target.value as typeof formData.status })
+                setFormData({
+                  ...formData,
+                  status: e.target.value as typeof formData.status,
+                })
               }
             />
 
@@ -298,7 +362,10 @@ export function ProjectTasks({ projectId }: ProjectTasksProps) {
               options={priorityOptions}
               value={formData.priority || "medium"}
               onChange={(e) =>
-                setFormData({ ...formData, priority: e.target.value as typeof formData.priority })
+                setFormData({
+                  ...formData,
+                  priority: e.target.value as typeof formData.priority,
+                })
               }
             />
           </div>
@@ -307,7 +374,9 @@ export function ProjectTasks({ projectId }: ProjectTasksProps) {
             <Input
               label="Assignee"
               value={formData.assignee || ""}
-              onChange={(e) => setFormData({ ...formData, assignee: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, assignee: e.target.value })
+              }
               placeholder="Person responsible"
             />
 
@@ -315,14 +384,18 @@ export function ProjectTasks({ projectId }: ProjectTasksProps) {
               label="Due Date"
               type="date"
               value={formData.due_date || ""}
-              onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, due_date: e.target.value })
+              }
             />
           </div>
 
           <Input
             label="Category"
             value={formData.category || ""}
-            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, category: e.target.value })
+            }
             placeholder="e.g., Design, Permits, Construction"
           />
         </div>

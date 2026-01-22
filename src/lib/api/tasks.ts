@@ -1,19 +1,25 @@
-import { apiGet, apiPost, apiPut, apiDelete } from "./client";
+import { apiGet, apiGetPaginated, apiPost, apiPut, apiDelete } from "./client";
 import type { Task, CreateTaskInput, UpdateTaskInput } from "@/types/models";
-import type { PaginatedResponse, PaginationParams, FilterParams } from "@/types/api";
+import type {
+  PaginatedResponse,
+  PaginationParams,
+  FilterParams,
+} from "@/types/api";
 
 export const tasksApi = {
   /**
-   * List all tasks for the current user
+   * List all tasks for the current user (across all projects)
    */
   list: (params?: PaginationParams & FilterParams) =>
-    apiGet<PaginatedResponse<Task>>("/api/tasks", params),
+    apiGetPaginated<Task>("/api/tasks", params),
 
   /**
    * List tasks for a specific project
    */
-  listByProject: (projectId: string, params?: PaginationParams & FilterParams) =>
-    apiGet<PaginatedResponse<Task>>(`/api/projects/${projectId}/tasks`, params),
+  listByProject: (
+    projectId: string,
+    params?: PaginationParams & FilterParams,
+  ) => apiGetPaginated<Task>(`/api/projects/${projectId}/tasks`, params),
 
   /**
    * Get a single task

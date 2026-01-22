@@ -1,19 +1,32 @@
-import { apiGet, apiPost, apiPut, apiDelete } from "./client";
-import type { RFI, RFIResponse, CreateRFIInput, UpdateRFIInput, CreateRFIResponseInput } from "@/types/models";
-import type { PaginatedResponse, PaginationParams, FilterParams } from "@/types/api";
+import { apiGet, apiGetPaginated, apiPost, apiPut, apiDelete } from "./client";
+import type {
+  RFI,
+  RFIResponse,
+  CreateRFIInput,
+  UpdateRFIInput,
+  CreateRFIResponseInput,
+} from "@/types/models";
+import type {
+  PaginatedResponse,
+  PaginationParams,
+  FilterParams,
+  ApiResponse,
+} from "@/types/api";
 
 export const rfisApi = {
   /**
-   * List all RFIs for the current user
+   * List all RFIs for the current user (across all projects)
    */
   list: (params?: PaginationParams & FilterParams) =>
-    apiGet<PaginatedResponse<RFI>>("/api/rfis", params),
+    apiGetPaginated<RFI>("/api/rfis", params),
 
   /**
    * List RFIs for a specific project
    */
-  listByProject: (projectId: string, params?: PaginationParams & FilterParams) =>
-    apiGet<PaginatedResponse<RFI>>(`/api/projects/${projectId}/rfis`, params),
+  listByProject: (
+    projectId: string,
+    params?: PaginationParams & FilterParams,
+  ) => apiGetPaginated<RFI>(`/api/projects/${projectId}/rfis`, params),
 
   /**
    * Get a single RFI
@@ -48,6 +61,13 @@ export const rfisApi = {
   /**
    * Add a response to an RFI
    */
-  addResponse: (projectId: string, rfiId: string, data: CreateRFIResponseInput) =>
-    apiPost<RFIResponse>(`/api/projects/${projectId}/rfis/${rfiId}/responses`, data),
+  addResponse: (
+    projectId: string,
+    rfiId: string,
+    data: CreateRFIResponseInput,
+  ) =>
+    apiPost<RFIResponse>(
+      `/api/projects/${projectId}/rfis/${rfiId}/responses`,
+      data,
+    ),
 };

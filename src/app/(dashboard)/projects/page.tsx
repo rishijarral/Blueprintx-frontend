@@ -54,29 +54,27 @@ export default function ProjectsPage() {
         }
       />
 
-      {/* Filters */}
-      <Card variant="bordered">
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <Input
-                placeholder="Search projects..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                leftIcon={<Search className="h-4 w-4" />}
-              />
-            </div>
-            <div className="w-full sm:w-48">
-              <Select
-                options={statusOptions}
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                placeholder="All Statuses"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Search & Filters */}
+      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+        <div className="relative flex-1">
+          <Input
+            placeholder="Search projects..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            leftIcon={<Search className="h-4 w-4" />}
+            className="bg-card"
+          />
+        </div>
+        <div className="w-full sm:w-52">
+          <Select
+            options={statusOptions}
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            placeholder="All Statuses"
+            className="bg-card"
+          />
+        </div>
+      </div>
 
       {/* Projects Table */}
       <Card variant="bordered">

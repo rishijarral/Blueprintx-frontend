@@ -1,5 +1,9 @@
 import { apiGet, apiPut } from "./client";
-import type { Profile, UserSettings, NotificationSettings } from "@/types/models";
+import type {
+  Profile,
+  UserSettings,
+  NotificationSettings,
+} from "@/types/models";
 
 export const profileApi = {
   /**
@@ -10,7 +14,20 @@ export const profileApi = {
   /**
    * Update current user's profile
    */
-  updateMe: (data: Partial<Profile>) => apiPut<Profile>("/api/profiles/me", data),
+  updateMe: (
+    data: Partial<
+      Pick<
+        Profile,
+        | "first_name"
+        | "last_name"
+        | "phone"
+        | "company_name"
+        | "title"
+        | "bio"
+        | "location"
+      >
+    >,
+  ) => apiPut<Profile>("/api/profiles/me", data),
 
   /**
    * Get current user's settings

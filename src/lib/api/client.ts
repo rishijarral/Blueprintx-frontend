@@ -1,7 +1,14 @@
 import { getClient } from "@/lib/supabase/client";
-import type { APIError } from "@/types/api";
+import type { APIError, ApiResponse, PaginatedResponse } from "@/types/api";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+
+// Request timeout (30 seconds)
+const REQUEST_TIMEOUT = 30000;
+
+// Retry configuration
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000;
 
 /**
  * Custom error class for API errors
@@ -10,6 +17,7 @@ export class ApiError extends Error {
   status: number;
   code: string;
   details?: Record<string, unknown>;
+  isRetryable: boolean;
 
   constructor(status: number, error: APIError) {
     super(error.message);
@@ -17,6 +25,7 @@ export class ApiError extends Error {
     this.status = status;
     this.code = error.error;
     this.details = error.details;
+    this.isRetryable = status >= 500 || status === 0;
   }
 }
 
@@ -25,19 +34,42 @@ export class ApiError extends Error {
  */
 async function getAccessToken(): Promise<string | null> {
   const supabase = getClient();
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   return session?.access_token ?? null;
 }
 
 /**
- * Base API client for making authenticated requests to the Rust API
+ * Create an AbortController with timeout
  */
-export async function apiClient<T>(
+function createTimeoutController(timeout: number): {
+  controller: AbortController;
+  timeoutId: NodeJS.Timeout;
+} {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  return { controller, timeoutId };
+}
+
+/**
+ * Sleep utility for retry delays
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Base API client for making authenticated requests
+ * Handles response unwrapping, retries, and errors
+ */
+async function apiRequest<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  retryCount = 0,
 ): Promise<T> {
   const token = await getAccessToken();
-  
+
   const headers: HeadersInit = {
     "Content-Type": "application/json",
     ...options.headers,
@@ -47,43 +79,148 @@ export async function apiClient<T>(
     (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  const { controller, timeoutId } = createTimeoutController(REQUEST_TIMEOUT);
 
-  // Handle empty responses
-  const contentType = response.headers.get("content-type");
-  let data: unknown;
-  
-  if (contentType?.includes("application/json")) {
-    data = await response.json();
-  } else {
-    data = await response.text();
-  }
-
-  if (!response.ok) {
-    const error = data as APIError;
-    throw new ApiError(response.status, {
-      error: error.error || "Unknown error",
-      message: error.message || "An unexpected error occurred",
-      status_code: response.status,
-      details: error.details,
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+      signal: controller.signal,
+      credentials: "same-origin",
     });
-  }
 
-  return data as T;
+    clearTimeout(timeoutId);
+
+    // Handle rate limiting
+    if (response.status === 429) {
+      const retryAfter = response.headers.get("Retry-After");
+      const waitTime = retryAfter ? parseInt(retryAfter, 10) * 1000 : 5000;
+
+      if (retryCount < MAX_RETRIES) {
+        await sleep(waitTime);
+        return apiRequest<T>(endpoint, options, retryCount + 1);
+      }
+
+      throw new ApiError(429, {
+        error: "rate_limited",
+        message: "Too many requests. Please try again later.",
+        status_code: 429,
+      });
+    }
+
+    // Handle 204 No Content
+    if (response.status === 204) {
+      return undefined as T;
+    }
+
+    // Parse response
+    const contentType = response.headers.get("content-type");
+    let data: unknown;
+
+    if (contentType?.includes("application/json")) {
+      data = await response.json();
+    } else {
+      data = await response.text();
+    }
+
+    if (!response.ok) {
+      const error = data as APIError;
+      const apiError = new ApiError(response.status, {
+        error: error.error || "unknown_error",
+        message: error.message || "An unexpected error occurred",
+        status_code: response.status,
+        details: error.details,
+      });
+
+      // Retry on server errors
+      if (apiError.isRetryable && retryCount < MAX_RETRIES) {
+        const delay = RETRY_DELAY * Math.pow(2, retryCount);
+        await sleep(delay);
+        return apiRequest<T>(endpoint, options, retryCount + 1);
+      }
+
+      throw apiError;
+    }
+
+    return data as T;
+  } catch (error) {
+    clearTimeout(timeoutId);
+
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new ApiError(0, {
+        error: "timeout",
+        message: "Request timed out. Please try again.",
+        status_code: 0,
+      });
+    }
+
+    if (error instanceof TypeError && error.message.includes("fetch")) {
+      if (retryCount < MAX_RETRIES) {
+        const delay = RETRY_DELAY * Math.pow(2, retryCount);
+        await sleep(delay);
+        return apiRequest<T>(endpoint, options, retryCount + 1);
+      }
+
+      throw new ApiError(0, {
+        error: "network_error",
+        message:
+          "Unable to connect to the server. Please check your connection.",
+        status_code: 0,
+      });
+    }
+
+    throw error;
+  }
 }
 
 /**
- * GET request helper
+ * GET request - automatically unwraps { data: T } responses
  */
 export async function apiGet<T>(
   endpoint: string,
-  params?: Record<string, string | number | boolean | undefined>
+  params?: Record<string, string | number | boolean | undefined>,
 ): Promise<T> {
   let url = endpoint;
-  
+
+  if (params) {
+    const searchParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined) {
+        // Don't double-encode - URLSearchParams handles encoding
+        searchParams.append(key, String(value));
+      }
+    });
+    const queryString = searchParams.toString();
+    if (queryString) {
+      url += `?${queryString}`;
+    }
+  }
+
+  const response = await apiRequest<T | ApiResponse<T>>(url, { method: "GET" });
+
+  // Unwrap { data: T } response if present (for single item responses)
+  // Paginated responses already have correct shape
+  if (
+    response &&
+    typeof response === "object" &&
+    "data" in response &&
+    !("pagination" in response)
+  ) {
+    return (response as ApiResponse<T>).data;
+  }
+
+  return response as T;
+}
+
+/**
+ * GET request for paginated endpoints - returns full response with pagination
+ */
+export async function apiGetPaginated<T>(
+  endpoint: string,
+  params?: Record<string, string | number | boolean | undefined>,
+): Promise<PaginatedResponse<T>> {
+  let url = endpoint;
+
   if (params) {
     const searchParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
@@ -97,53 +234,68 @@ export async function apiGet<T>(
     }
   }
 
-  return apiClient<T>(url, { method: "GET" });
+  return apiRequest<PaginatedResponse<T>>(url, { method: "GET" });
 }
 
 /**
- * POST request helper
+ * POST request - automatically unwraps { data: T } responses
  */
-export async function apiPost<T>(
-  endpoint: string,
-  body?: unknown
-): Promise<T> {
-  return apiClient<T>(endpoint, {
+export async function apiPost<T>(endpoint: string, body?: unknown): Promise<T> {
+  const response = await apiRequest<T | ApiResponse<T>>(endpoint, {
     method: "POST",
     body: body ? JSON.stringify(body) : undefined,
   });
+
+  // Unwrap { data: T } response
+  if (response && typeof response === "object" && "data" in response) {
+    return (response as ApiResponse<T>).data;
+  }
+
+  return response as T;
 }
 
 /**
- * PUT request helper
+ * PUT request - automatically unwraps { data: T } responses
  */
-export async function apiPut<T>(
-  endpoint: string,
-  body?: unknown
-): Promise<T> {
-  return apiClient<T>(endpoint, {
+export async function apiPut<T>(endpoint: string, body?: unknown): Promise<T> {
+  const response = await apiRequest<T | ApiResponse<T>>(endpoint, {
     method: "PUT",
     body: body ? JSON.stringify(body) : undefined,
   });
+
+  // Unwrap { data: T } response
+  if (response && typeof response === "object" && "data" in response) {
+    return (response as ApiResponse<T>).data;
+  }
+
+  return response as T;
 }
 
 /**
- * PATCH request helper
+ * PATCH request - automatically unwraps { data: T } responses
  */
 export async function apiPatch<T>(
   endpoint: string,
-  body?: unknown
+  body?: unknown,
 ): Promise<T> {
-  return apiClient<T>(endpoint, {
+  const response = await apiRequest<T | ApiResponse<T>>(endpoint, {
     method: "PATCH",
     body: body ? JSON.stringify(body) : undefined,
   });
+
+  // Unwrap { data: T } response
+  if (response && typeof response === "object" && "data" in response) {
+    return (response as ApiResponse<T>).data;
+  }
+
+  return response as T;
 }
 
 /**
- * DELETE request helper
+ * DELETE request
  */
 export async function apiDelete<T>(endpoint: string): Promise<T> {
-  return apiClient<T>(endpoint, { method: "DELETE" });
+  return apiRequest<T>(endpoint, { method: "DELETE" });
 }
 
 /**
@@ -152,12 +304,14 @@ export async function apiDelete<T>(endpoint: string): Promise<T> {
 export async function apiUpload<T>(
   endpoint: string,
   formData: FormData,
-  onProgress?: (progress: number) => void
+  onProgress?: (progress: number) => void,
 ): Promise<T> {
   const token = await getAccessToken();
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
+
+    xhr.timeout = REQUEST_TIMEOUT * 2;
 
     xhr.open("POST", `${API_BASE_URL}${endpoint}`);
 
@@ -175,8 +329,13 @@ export async function apiUpload<T>(
     xhr.addEventListener("load", () => {
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
-          const data = JSON.parse(xhr.responseText);
-          resolve(data);
+          const response = JSON.parse(xhr.responseText);
+          // Unwrap { data: T } response
+          if (response && typeof response === "object" && "data" in response) {
+            resolve(response.data);
+          } else {
+            resolve(response);
+          }
         } catch {
           resolve(xhr.responseText as unknown as T);
         }
@@ -185,21 +344,35 @@ export async function apiUpload<T>(
           const error = JSON.parse(xhr.responseText);
           reject(new ApiError(xhr.status, error));
         } catch {
-          reject(new ApiError(xhr.status, {
-            error: "Upload failed",
-            message: xhr.statusText || "An error occurred during upload",
-            status_code: xhr.status,
-          }));
+          reject(
+            new ApiError(xhr.status, {
+              error: "upload_failed",
+              message: xhr.statusText || "An error occurred during upload",
+              status_code: xhr.status,
+            }),
+          );
         }
       }
     });
 
     xhr.addEventListener("error", () => {
-      reject(new ApiError(0, {
-        error: "Network error",
-        message: "Failed to connect to the server",
-        status_code: 0,
-      }));
+      reject(
+        new ApiError(0, {
+          error: "network_error",
+          message: "Failed to connect to the server",
+          status_code: 0,
+        }),
+      );
+    });
+
+    xhr.addEventListener("timeout", () => {
+      reject(
+        new ApiError(0, {
+          error: "timeout",
+          message: "Upload timed out. Please try again with a smaller file.",
+          status_code: 0,
+        }),
+      );
     });
 
     xhr.send(formData);

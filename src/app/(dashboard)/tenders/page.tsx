@@ -49,38 +49,36 @@ export default function TendersPage() {
         ]}
       />
 
-      {/* Filters */}
-      <Card variant="bordered">
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <Input
-                placeholder="Search tenders..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                leftIcon={<Search className="h-4 w-4" />}
-              />
-            </div>
-            <div className="w-full sm:w-48">
-              <Select
-                options={[
-                  { value: "", label: "All Trades" },
-                  { value: "electrical", label: "Electrical" },
-                  { value: "plumbing", label: "Plumbing" },
-                  { value: "hvac", label: "HVAC" },
-                  { value: "roofing", label: "Roofing" },
-                  { value: "carpentry", label: "Carpentry" },
-                  { value: "concrete", label: "Concrete" },
-                  { value: "painting", label: "Painting" },
-                ]}
-                value={tradeFilter}
-                onChange={(e) => setTradeFilter(e.target.value)}
-                placeholder="All Trades"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Search & Filters */}
+      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+        <div className="relative flex-1">
+          <Input
+            placeholder="Search tenders..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            leftIcon={<Search className="h-4 w-4" />}
+            className="bg-card"
+          />
+        </div>
+        <div className="w-full sm:w-52">
+          <Select
+            options={[
+              { value: "", label: "All Trades" },
+              { value: "electrical", label: "Electrical" },
+              { value: "plumbing", label: "Plumbing" },
+              { value: "hvac", label: "HVAC" },
+              { value: "roofing", label: "Roofing" },
+              { value: "carpentry", label: "Carpentry" },
+              { value: "concrete", label: "Concrete" },
+              { value: "painting", label: "Painting" },
+            ]}
+            value={tradeFilter}
+            onChange={(e) => setTradeFilter(e.target.value)}
+            placeholder="All Trades"
+            className="bg-card"
+          />
+        </div>
+      </div>
 
       {/* Tenders Grid */}
       {isLoading ? (
