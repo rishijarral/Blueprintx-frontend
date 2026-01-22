@@ -26,6 +26,7 @@ import {
   type UpdateMarketplaceProfileInput,
   type PortfolioProjectInput,
   type PortfolioProject,
+  type SubcontractorProfile,
 } from "@/lib/api/marketplace";
 import { queryKeys } from "@/types/api";
 import { ROUTES } from "@/lib/constants/routes";
@@ -83,9 +84,10 @@ export default function MarketplaceProfilePage() {
   const [showPortfolioModal, setShowPortfolioModal] = useState(false);
   const [editingPortfolio, setEditingPortfolio] = useState<PortfolioProject | null>(null);
 
-  const { data: profile, isLoading, error } = useQuery({
+  const { data: profile, isLoading, error, isError } = useQuery({
     queryKey: queryKeys.marketplace.profile,
     queryFn: () => marketplaceApi.profile.get(),
+    retry: 1, // Only retry once for faster failure feedback
   });
 
   const { data: portfolio, isLoading: portfolioLoading } = useQuery({
@@ -148,7 +150,33 @@ export default function MarketplaceProfilePage() {
     );
   }
 
-  if (error || !profile) {
+  // Show empty state if there's no profile (either error or not found)
+  if (isError || !profile) {
+    // Determine if this is a "no profile" vs actual error
+    // 404 = profile doesn't exist, network errors = server unavailable
+    const errorMessage = error?.message?.toLowerCase() || "";
+    const isNotFound = errorMessage.includes("404") || errorMessage.includes("not found");
+    const isNetworkError = errorMessage.includes("network") || 
+                           errorMessage.includes("connect") || 
+                           errorMessage.includes("timeout") ||
+                           errorMessage.includes("fetch");
+    
+    // Default to showing "create profile" for most cases
+    // Only show error state for clear network/server issues
+    const showCreateProfile = !isError || isNotFound;
+    
+    const errorTitle = showCreateProfile
+      ? "No Subcontractor Profile"
+      : isNetworkError
+        ? "Connection Error"
+        : "Unable to Load Profile";
+    
+    const errorDescription = showCreateProfile
+      ? "You don't have a subcontractor profile yet. Create one to appear in the marketplace and bid on tenders."
+      : isNetworkError
+        ? "Unable to connect to the server. Please check your connection and try again."
+        : "There was a problem loading your profile. Please try again.";
+
     return (
       <div className="space-y-6">
         <PageHeader
@@ -164,15 +192,31 @@ export default function MarketplaceProfilePage() {
           <CardContent className="p-6">
             <EmptyState
               icon={<User className="h-8 w-8 text-muted-foreground" />}
-              title="No Subcontractor Profile"
-              description="You don't have a subcontractor profile yet. Create one to appear in the marketplace and bid on tenders."
-              action={{
-                label: "Create Profile",
-                onClick: () => setIsEditing(true),
-              }}
+              title={errorTitle}
+              description={errorDescription}
+              action={
+                showCreateProfile
+                  ? {
+                      label: "Create Profile",
+                      onClick: () => setIsEditing(true),
+                    }
+                  : {
+                      label: "Try Again",
+                      onClick: () => window.location.reload(),
+                    }
+              }
             />
           </CardContent>
         </Card>
+
+        {/* Edit Profile Modal - needed for creating a new profile */}
+        {showCreateProfile && (
+          <EditProfileModal
+            isOpen={isEditing}
+            onClose={() => setIsEditing(false)}
+            profile={null}
+          />
+        )}
       </div>
     );
   }
@@ -650,10 +694,12 @@ function EditProfileModal({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  profile: any;
+  profile: SubcontractorProfile | null;
 }) {
   const queryClient = useQueryClient();
   const toast = useShowToast();
+  const isCreating = !profile;
+
   const [formData, setFormData] = useState<UpdateMarketplaceProfileInput>({
     name: profile?.name || "",
     headline: profile?.headline || "",
@@ -668,35 +714,43 @@ function EditProfileModal({
     availability_status: profile?.availability_status || "available",
   });
 
-  // Reset form data when profile changes
+  // Reset form data when profile changes or modal opens
   useEffect(() => {
-    if (profile) {
+    if (isOpen) {
       setFormData({
-        name: profile.name || "",
-        headline: profile.headline || "",
-        company_description: profile.company_description || "",
-        trade: profile.trade || "",
-        location: profile.location || "",
-        contact_email: profile.contact_email || "",
-        contact_phone: profile.contact_phone || "",
-        website: profile.website || "",
-        year_established: profile.year_established,
-        employee_count: profile.employee_count || "",
-        availability_status: profile.availability_status || "available",
+        name: profile?.name || "",
+        headline: profile?.headline || "",
+        company_description: profile?.company_description || "",
+        trade: profile?.trade || "",
+        location: profile?.location || "",
+        contact_email: profile?.contact_email || "",
+        contact_phone: profile?.contact_phone || "",
+        website: profile?.website || "",
+        year_established: profile?.year_established,
+        employee_count: profile?.employee_count || "",
+        availability_status: profile?.availability_status || "available",
       });
     }
-  }, [profile]);
+  }, [profile, isOpen]);
 
   const updateMutation = useMutation({
     mutationFn: (input: UpdateMarketplaceProfileInput) =>
       marketplaceApi.profile.update(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.marketplace.profile });
-      toast.success("Profile updated", "Your marketplace profile has been saved.");
+      toast.success(
+        isCreating ? "Profile created" : "Profile updated",
+        isCreating
+          ? "Your marketplace profile has been created."
+          : "Your marketplace profile has been saved."
+      );
       onClose();
     },
     onError: (error: Error) => {
-      toast.error("Failed to update profile", error.message);
+      toast.error(
+        isCreating ? "Failed to create profile" : "Failed to update profile",
+        error.message
+      );
     },
   });
 
@@ -706,7 +760,12 @@ function EditProfileModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Edit Profile" size="lg">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={isCreating ? "Create Marketplace Profile" : "Edit Profile"}
+      size="lg"
+    >
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input
           label="Company Name *"
